@@ -104,7 +104,7 @@ export default function Sidebar({ page, onNavigate, onOpenProfileEdit }) {
             ? "⚠️ [DEV] 입력폼 데이터가 전부 삭제됩니다.\n· 프로필, 기록, Phase 등 모든 내용 삭제\n· 새로고침 후 온보딩부터 다시 시작"
             : "⚠️ 경고: 모든 데이터가 영구 삭제됩니다!\n\n· 프로필, 수입원, 목표, Phase\n· 캘린더 이벤트, 완료 체크, 실제 금액\n· 지출 기록, 반복 지출, 프리셋\n· 커스텀 카테고리\n\n정말 초기화하시겠습니까? (되돌릴 수 없음)";
           if (!confirm(msg)) return;
-          if (!import.meta.env.DEV && !confirm("마지막 확인 — 정말 삭제?")) return;
+          if (!import.meta.env.DEV && !confirm("진짜진짜 진심 삭제할 거야? (디딩에게 울면서 빌기 금지)")) return;
           resetAllData();
         }}
         style={{
