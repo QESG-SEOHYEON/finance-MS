@@ -8,7 +8,7 @@ const MENU = [
   { key: "expenses", icon: "💸", label: "Expenses" }
 ];
 
-export default function Sidebar({ page, onNavigate }) {
+export default function Sidebar({ page, onNavigate, onOpenProfileEdit }) {
   const today = new Date();
   const userPhases = useLiveQuery(() => getUserPhases(), [], []);
   const phase = currentPhaseFrom(userPhases, today);
@@ -81,6 +81,22 @@ export default function Sidebar({ page, onNavigate }) {
         <div className="sidebar-dday-value">D-{dday > 0 ? dday : 0}</div>
         <div className="sidebar-dday-sub">{p.goalDate}</div>
       </div>
+
+      {onOpenProfileEdit && (
+        <button
+          onClick={onOpenProfileEdit}
+          style={{
+            marginTop: 8, padding: "10px 12px", borderRadius: 10,
+            background: "rgba(255,255,255,0.6)", border: "1px solid #EDE5E2",
+            color: "#7A6060", fontSize: 12, fontWeight: 600,
+            cursor: "pointer", fontFamily: "inherit",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6
+          }}
+          title="이름·목표·수입 등 기본 정보 수정"
+        >
+          ⚙️ 프로필 재설정
+        </button>
+      )}
 
       {import.meta.env.DEV && (
         <button

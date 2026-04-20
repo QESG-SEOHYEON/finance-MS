@@ -85,24 +85,42 @@ function generatePhaseTemplate(currentDate, goalDate, n = 3) {
   return phases;
 }
 
-export default function OnboardingModal({ onComplete }) {
+export default function OnboardingModal({ onComplete, onClose, initialProfile, initialPhases }) {
   const [step, setStep] = useState(0);
-  const [data, setData] = useState({
-    name: "",
-    age: "",
-    birthYear: "",
-    subtitle: "",
-    dashboardTitle: "",
-    dashboardSubtitle: "",
-    currentNetWorth: "",
-    goalAmount: "",
-    goalDate: "",
-    incomeSources: [{ ...DEFAULT_INCOME_SOURCE, id: `src-${Date.now()}`, name: "월급" }],
-    expenseBudgetCap: "",
-    phaseMode: "use", // use | none
-    customPhases: [],
-    debtEnabled: false,
-    debtItems: []
+  const isEditMode = !!initialProfile;
+
+  const [data, setData] = useState(() => {
+    if (initialProfile) {
+      return {
+        name: initialProfile.name || "",
+        age: initialProfile.age || "",
+        birthYear: initialProfile.birthYear || "",
+        subtitle: initialProfile.subtitle || "",
+        dashboardTitle: initialProfile.dashboardTitle || "",
+        dashboardSubtitle: initialProfile.dashboardSubtitle || "",
+        currentNetWorth: initialProfile.currentNetWorth ?? "",
+        goalAmount: initialProfile.goalAmount ?? "",
+        goalDate: initialProfile.goalDate || "",
+        incomeSources: (initialProfile.incomeSources && initialProfile.incomeSources.length > 0)
+          ? initialProfile.incomeSources
+          : [{ ...DEFAULT_INCOME_SOURCE, id: `src-${Date.now()}`, name: "월급" }],
+        expenseBudgetCap: initialProfile.expenseBudgetCap ?? "",
+        phaseMode: (initialPhases && initialPhases.length > 0) ? "use" : "none",
+        customPhases: initialPhases || [],
+        debtEnabled: !!initialProfile.debtEnabled,
+        debtItems: initialProfile.debtItems || []
+      };
+    }
+    return {
+      name: "", age: "", birthYear: "", subtitle: "",
+      dashboardTitle: "", dashboardSubtitle: "",
+      currentNetWorth: "", goalAmount: "", goalDate: "",
+      incomeSources: [{ ...DEFAULT_INCOME_SOURCE, id: `src-${Date.now()}`, name: "월급" }],
+      expenseBudgetCap: "",
+      phaseMode: "use",
+      customPhases: [],
+      debtEnabled: false, debtItems: []
+    };
   });
 
   const set = (patch) => setData((d) => ({ ...d, ...patch }));
@@ -245,14 +263,28 @@ export default function OnboardingModal({ onComplete }) {
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ fontSize: 11, color: T.textLight, letterSpacing: 1.5, fontWeight: 700, marginBottom: 4 }}>
-          WELCOME · 초기 설정
-        </div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: T.text, marginBottom: 4 }}>
-          {STEPS[step]}
-        </div>
-        <div style={{ fontSize: 12, color: T.textMid, marginBottom: 20 }}>
-          Step {step + 1} / {STEPS.length}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <div style={{ fontSize: 11, color: T.textLight, letterSpacing: 1.5, fontWeight: 700, marginBottom: 4 }}>
+              {isEditMode ? "SETTINGS · 프로필 재설정" : "WELCOME · 초기 설정"}
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: T.text, marginBottom: 4 }}>
+              {STEPS[step]}
+            </div>
+            <div style={{ fontSize: 12, color: T.textMid, marginBottom: 20 }}>
+              Step {step + 1} / {STEPS.length}
+            </div>
+          </div>
+          {isEditMode && onClose && (
+            <button
+              onClick={onClose}
+              style={{
+                background: "transparent", border: "none", fontSize: 20,
+                color: T.textLight, cursor: "pointer", padding: "4px 8px"
+              }}
+              title="닫기"
+            >×</button>
+          )}
         </div>
 
         <div style={{ display: "flex", gap: 4, marginBottom: 24 }}>
