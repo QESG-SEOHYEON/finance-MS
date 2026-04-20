@@ -98,24 +98,25 @@ export default function Sidebar({ page, onNavigate, onOpenProfileEdit }) {
         </button>
       )}
 
-      {import.meta.env.DEV && (
-        <button
-          onClick={() => {
-            if (confirm("⚠️ 입력폼 데이터가 전부 삭제됩니다. 진행하시겠습니까?\n\n· 프로필, 가계 기록, Phase, 프리셋 등 모든 IndexedDB 내용이 삭제됨\n· 새로고침 후 온보딩부터 다시 시작\n(개발 테스트용)")) {
-              resetAllData();
-            }
-          }}
-          style={{
-            marginTop: 8, padding: "8px 10px", borderRadius: 8,
-            background: "transparent", border: "1px dashed #D4A0A0",
-            color: "#A66060", fontSize: 11, fontWeight: 600,
-            cursor: "pointer", fontFamily: "inherit"
-          }}
-          title="DevTools 열 필요 없이 IndexedDB 초기화 + 새로고침"
-        >
-          🧪 DEV · 전체 초기화
-        </button>
-      )}
+      <button
+        onClick={() => {
+          const msg = import.meta.env.DEV
+            ? "⚠️ [DEV] 입력폼 데이터가 전부 삭제됩니다.\n· 프로필, 기록, Phase 등 모든 내용 삭제\n· 새로고침 후 온보딩부터 다시 시작"
+            : "⚠️ 경고: 모든 데이터가 영구 삭제됩니다!\n\n· 프로필, 수입원, 목표, Phase\n· 캘린더 이벤트, 완료 체크, 실제 금액\n· 지출 기록, 반복 지출, 프리셋\n· 커스텀 카테고리\n\n정말 초기화하시겠습니까? (되돌릴 수 없음)";
+          if (!confirm(msg)) return;
+          if (!import.meta.env.DEV && !confirm("마지막 확인 — 정말 삭제?")) return;
+          resetAllData();
+        }}
+        style={{
+          marginTop: 8, padding: "8px 10px", borderRadius: 8,
+          background: "transparent", border: "1px dashed #D4A0A0",
+          color: "#A66060", fontSize: 11, fontWeight: 600,
+          cursor: "pointer", fontFamily: "inherit"
+        }}
+        title="IndexedDB 전체 삭제 후 새로고침 (되돌릴 수 없음)"
+      >
+        {import.meta.env.DEV ? "🧪 DEV · 전체 초기화" : "🗑️ 전체 데이터 초기화"}
+      </button>
     </aside>
   );
 }
