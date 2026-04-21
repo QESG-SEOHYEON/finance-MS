@@ -11,6 +11,7 @@ import { COLORS, fmt, fmtWon, getDaysInMonth, getTasksForMonth } from "../schedu
 import { aggregateMonth } from "../lib/aggregate.js";
 import TopBar from "../components/TopBar.jsx";
 import TaskEditor from "../components/TaskEditor.jsx";
+import BulkDebtModal from "../components/BulkDebtModal.jsx";
 
 const DOW = ["일", "월", "화", "수", "목", "금", "토"];
 const FILTERS = [
@@ -28,6 +29,7 @@ export default function CalendarPage() {
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [filter, setFilter] = useState("all");
   const [editTask, setEditTask] = useState(null); // { task, mode }
+  const [showBulkDebt, setShowBulkDebt] = useState(false);
   const [bootLoaded, setBootLoaded] = useState(false);
 
   const allMonthly = useLiveQuery(() => db.monthly_status.toArray(), [], []);
@@ -331,6 +333,13 @@ export default function CalendarPage() {
               </button>
             )}
             <button
+              className="btn btn-sm"
+              onClick={() => setShowBulkDebt(true)}
+              title="시작~종료 월에 걸쳐 매월 상환 이벤트 일괄 생성"
+            >
+              ⚡ 부채 일정
+            </button>
+            <button
               className="btn btn-primary btn-sm"
               onClick={() => setEditTask({ task: { day: today.getDate() }, mode: "create" })}
             >
@@ -472,6 +481,10 @@ export default function CalendarPage() {
           onDelete={editTask.mode === "edit" ? () => deleteTask(editTask.task) : null}
           onClose={() => setEditTask(null)}
         />
+      )}
+
+      {showBulkDebt && (
+        <BulkDebtModal onClose={() => setShowBulkDebt(false)} />
       )}
     </>
   );
