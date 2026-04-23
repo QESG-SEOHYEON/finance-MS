@@ -6,10 +6,11 @@ import ChangelogModal from "./components/ChangelogModal.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import CalendarPage from "./pages/CalendarPage.jsx";
 import ExpensesPage from "./pages/ExpensesPage.jsx";
+import EconomyPage from "./pages/EconomyPage.jsx";
 import { isOnboardingComplete, getUserProfile } from "./db.js";
 import { getUserPhases } from "./lib/phase.js";
 
-const VALID = ["dashboard", "calendar", "expenses"];
+const VALID = ["dashboard", "calendar", "expenses", "economy"];
 
 function readHash() {
   const h = (window.location.hash || "").replace(/^#\/?/, "");
@@ -109,6 +110,7 @@ export default function App() {
         {page === "dashboard" && <DashboardPage />}
         {page === "calendar" && <CalendarPage />}
         {page === "expenses" && <ExpensesPage />}
+        {page === "economy" && <EconomyPage />}
       </main>
       {onboardingState && (
         <OnboardingModal

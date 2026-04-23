@@ -5,7 +5,8 @@ import { currentPhaseFrom, getUserPhases } from "../lib/phase.js";
 const MENU = [
   { key: "dashboard", icon: "📊", label: "Dashboard" },
   { key: "calendar", icon: "📅", label: "Calendar" },
-  { key: "expenses", icon: "💸", label: "Expenses" }
+  { key: "expenses", icon: "💸", label: "Expenses" },
+  { key: "economy", icon: "📰", label: "Economy" }
 ];
 
 export default function Sidebar({ page, onNavigate, onOpenProfileEdit }) {
