@@ -6,7 +6,12 @@ export const EXPENSE_CATEGORIES = [
     color: "#C08060",
     bg: "#FFF8F3",
     cap: 440000,
-    subcats: ["장보기", "식사", "커피", "간식"],
+    subcats: [
+      { name: "장보기", icon: "🛒" },
+      { name: "식사", icon: "🍱" },
+      { name: "커피", icon: "☕" },
+      { name: "간식", icon: "🍫" }
+    ],
     presets: [
       { subcategory: "커피", amount: 3500, label: "☕ 커피 ₩3,500" },
       { subcategory: "식사", amount: 12000, label: "🍱 점심 ₩12,000" },
@@ -23,7 +28,12 @@ export const EXPENSE_CATEGORIES = [
     color: "#9B7EC0",
     bg: "#F3EEF8",
     cap: 450000,
-    subcats: ["약속", "취미", "문화생활", "운동"],
+    subcats: [
+      { name: "약속", icon: "🍻" },
+      { name: "취미", icon: "🎨" },
+      { name: "문화생활", icon: "🎬" },
+      { name: "운동", icon: "🏋️" }
+    ],
     presets: [
       { subcategory: "약속", amount: 30000, label: "🍻 약속 ₩30,000" },
       { subcategory: "약속", amount: 50000, label: "🥂 회식/모임 ₩50,000" },
@@ -39,7 +49,15 @@ export const EXPENSE_CATEGORIES = [
     color: "#A09088",
     bg: "#FAF5F3",
     cap: null,
-    subcats: ["경조사비", "의류", "교통", "구독", "의료", "생활용품", "기타"],
+    subcats: [
+      { name: "경조사비", icon: "💐" },
+      { name: "의류", icon: "👕" },
+      { name: "교통", icon: "🚇" },
+      { name: "구독", icon: "📺" },
+      { name: "의료", icon: "💊" },
+      { name: "생활용품", icon: "🧴" },
+      { name: "기타", icon: "📦" }
+    ],
     presets: [
       { subcategory: "경조사비", amount: 50000, label: "💐 경조사 ₩50,000" },
       { subcategory: "경조사비", amount: 100000, label: "🎁 경조사 ₩100,000" },
@@ -67,6 +85,20 @@ export const CATEGORY_COLOR_PRESETS = [
   { color: "#7E9EC0", bg: "#F0F5FA" }
 ];
 
+// 세부 카테고리는 문자열 또는 { name, icon } 객체로 저장 가능. 화면 표시용으로 항상 객체로 정규화.
+export function normalizeSubcats(subcats) {
+  return (subcats || []).map((s) =>
+    typeof s === "string" ? { name: s, icon: null } : { name: s.name, icon: s.icon ?? null }
+  );
+}
+
+export function getSubcatIcon(category, name) {
+  if (!category || !name) return null;
+  const list = normalizeSubcats(category.subcats);
+  const found = list.find((s) => s.name === name);
+  return found?.icon || null;
+}
+
 export function getCategory(key, allCategories) {
   if (allCategories) {
     const found = allCategories.find((c) => c.key === key);
@@ -78,17 +110,17 @@ export function getCategory(key, allCategories) {
   return EXPENSE_CATEGORIES.find((c) => c.key === key) || EXPENSE_CATEGORIES[2];
 }
 
-// 기본 + override + custom 병합
+// 기본 + override + custom 병합. subcats는 모두 정규화(객체 형태).
 export function mergeCategories(overrides = {}, customs = []) {
   const withOverrides = EXPENSE_CATEGORIES.map((c) => {
     const ov = overrides[c.key];
-    if (!ov) return c;
-    return { ...c, ...ov };
+    const merged = ov ? { ...c, ...ov } : c;
+    return { ...merged, subcats: normalizeSubcats(merged.subcats) };
   });
   const fullCustoms = customs.map((c) => ({
     presets: [],
-    subcats: [],
     ...c,
+    subcats: normalizeSubcats(c.subcats),
     isCustom: true
   }));
   return [...withOverrides, ...fullCustoms];

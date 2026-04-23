@@ -13,7 +13,7 @@ import { fmt, fmtWon, getTasksForMonth } from "../schedule.js";
 import { currentPhaseFrom, getUserPhases } from "../lib/phase.js";
 import { checkpointsForMonth } from "../lib/annual.js";
 import { detectRisks } from "../lib/risks.js";
-import { EXPENSE_CATEGORIES } from "../lib/expenseCategories.js";
+import { EXPENSE_CATEGORIES, mergeCategories } from "../lib/expenseCategories.js";
 import { aggregateRange, aggregateWeeklyRange } from "../lib/aggregate.js";
 import TopBar from "../components/TopBar.jsx";
 import {
@@ -138,6 +138,31 @@ export default function DashboardPage() {
   const expenses = useLiveQuery(() => getExpensesForMonth(year, month), [year, month], []);
   const scheduleRow = useLiveQuery(() => getMonthSchedule(year, month), [year, month], null);
 
+  const customCategoriesList = useLiveQuery(
+    () => db.settings.get("custom-categories").then((r) => r?.value || []),
+    [],
+    []
+  );
+  const categoryOverrides = useLiveQuery(
+    () => db.settings.get("category-overrides").then((r) => r?.value || {}),
+    [],
+    {}
+  );
+  const dashboardHidden = useLiveQuery(
+    () => db.settings.get("dashboard-categories-hidden").then((r) => r?.value || []),
+    [],
+    []
+  );
+  const allCategories = useMemo(
+    () => mergeCategories(categoryOverrides || {}, customCategoriesList || []),
+    [categoryOverrides, customCategoriesList]
+  );
+  const toggleDashboardCategory = async (key) => {
+    const hidden = dashboardHidden || [];
+    const next = hidden.includes(key) ? hidden.filter((k) => k !== key) : [...hidden, key];
+    await db.settings.put({ id: "dashboard-categories-hidden", value: next });
+  };
+
   const debtPaidBefore = useMemo(
     () => calcDebtPaidBefore(allMonthly || [], dbProfile, year, month),
     [allMonthly, dbProfile, year, month]
@@ -238,17 +263,30 @@ export default function DashboardPage() {
   const nwPct = Math.min(100, (netWorth / profile.goalAmount) * 100);
   const remaining = Math.max(0, profile.goalAmount - netWorth);
 
-  // 변동지출 집계
+  // 변동지출 집계 (카테고리별 동적 합산)
   const expenseSums = useMemo(() => {
-    const sums = { food: 0, leisure: 0, other: 0, total: 0 };
+    const sums = { total: 0 };
+    const knownKeys = new Set(allCategories.map((c) => c.key));
+    for (const c of allCategories) sums[c.key] = 0;
     for (const e of expenses || []) {
-      const cat = e.category === "social" ? "leisure" : e.category === "transit" ? "other" : e.category;
-      if (sums[cat] !== undefined) sums[cat] += e.amount;
-      else sums.other += e.amount;
+      const raw = e.category;
+      const cat = raw === "social" ? "leisure" : raw === "transit" ? "other" : raw;
+      if (knownKeys.has(cat)) sums[cat] += e.amount;
+      else sums.other = (sums.other || 0) + e.amount;
       sums.total += e.amount;
     }
     return sums;
-  }, [expenses]);
+  }, [expenses, allCategories]);
+
+  const topCategoriesText = useMemo(() => {
+    const entries = allCategories
+      .map((c) => ({ c, amt: expenseSums[c.key] || 0 }))
+      .filter((x) => x.amt > 0)
+      .sort((a, b) => b.amt - a.amt)
+      .slice(0, 3);
+    if (entries.length === 0) return "아직 기록 없음";
+    return entries.map(({ c, amt }) => `${c.icon} ${fmt(amt)}`).join(" · ");
+  }, [allCategories, expenseSums]);
 
   // 위험 신호
   const cardTask = tasks.find((t) => t.label === "카드값");
@@ -378,9 +416,9 @@ export default function DashboardPage() {
         <StatCard
           label="이번 달 변동지출"
           value={fmt(expenseSums.total)}
-          sub={`식비 ${fmt(expenseSums.food)} · 여가 ${fmt(expenseSums.leisure)} · 기타 ${fmt(expenseSums.other)}`}
-          pct={(expenseSums.total / 890000) * 100}
-          color={expenseSums.total > 890000 ? R.overBudget : R.warm}
+          sub={topCategoriesText}
+          pct={(expenseSums.total / (profile.expenseBudgetCap || 890000)) * 100}
+          color={expenseSums.total > (profile.expenseBudgetCap || 890000) ? R.overBudget : R.warm}
         />
         <StatCard
           label="이번 달 실행률"
@@ -646,21 +684,109 @@ export default function DashboardPage() {
         </div>
 
       {/* 변동지출 카테고리 요약 */}
-      <div className="card">
-        <div className="section-title">
-          카테고리별 지출
+      <DashboardCategorySummary
+        year={year}
+        month={month}
+        allCategories={allCategories}
+        expenseSums={expenseSums}
+        dashboardHidden={dashboardHidden || []}
+        onToggle={toggleDashboardCategory}
+        R={R}
+      />
+      </div>{/* /dashboard-bottom */}
+    </>
+  );
+}
+
+function StatCard({ label, value, sub, pct, color }) {
+  return (
+    <div className="card-sm" style={{ padding: "12px 14px" }}>
+      <div style={{ fontSize: 10, color: R.textLight }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 800, marginTop: 2, letterSpacing: -0.5, color: R.textDark }}>{value}</div>
+      {sub && <div style={{ fontSize: 10, color: R.textMid, marginTop: 2 }}>{sub}</div>}
+      <div className="progress-track" style={{ marginTop: 8, height: 4 }}>
+        <div className="progress-fill" style={{ width: `${Math.min(100, pct)}%`, background: color }} />
+      </div>
+    </div>
+  );
+}
+
+function DashboardCategorySummary({ year, month, allCategories, expenseSums, dashboardHidden, onToggle, R }) {
+  const [manage, setManage] = useState(false);
+  const visible = allCategories.filter((c) => !dashboardHidden.includes(c.key));
+  const hiddenList = allCategories.filter((c) => dashboardHidden.includes(c.key));
+
+  return (
+    <div className="card">
+      <div className="section-title">
+        카테고리별 지출
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span className="section-meta">{year}.{String(month).padStart(2, "0")}</span>
+          <button
+            className="btn btn-sm"
+            onClick={() => setManage((v) => !v)}
+            style={{
+              padding: "0 10px", fontSize: 11,
+              background: manage ? R.rose400 : "#fff",
+              color: manage ? "#fff" : R.textMid,
+              borderColor: manage ? R.rose400 : R.border
+            }}
+            title="대시보드에 표시할 카테고리 선택"
+          >{manage ? "완료" : "✎ 표시 관리"}</button>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {EXPENSE_CATEGORIES.map((c) => {
-            const amt = expenseSums[c.key] || 0;
-            const pct = c.cap ? Math.min(100, (amt / c.cap) * 100) : 0;
-            const over = c.cap && amt > c.cap;
-            return (
-              <div key={c.key} style={{ padding: 10, background: c.bg, borderRadius: 10 }}>
+      </div>
+
+      {manage && (
+        <div style={{
+          fontSize: 11, color: R.textMid, background: R.cream,
+          padding: "8px 10px", borderRadius: 8, marginBottom: 10,
+          lineHeight: 1.5
+        }}>
+          체크된 카테고리만 대시보드에 표시됩니다. 기록 데이터는 유지됩니다.
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {(manage ? allCategories : visible).map((c) => {
+          const amt = expenseSums[c.key] || 0;
+          const pct = c.cap ? Math.min(100, (amt / c.cap) * 100) : 0;
+          const over = c.cap && amt > c.cap;
+          const isHidden = dashboardHidden.includes(c.key);
+          return (
+            <div
+              key={c.key}
+              onClick={manage ? () => onToggle(c.key) : undefined}
+              style={{
+                padding: 10, background: c.bg, borderRadius: 10,
+                opacity: manage && isHidden ? 0.5 : 1,
+                display: "flex", alignItems: "center", gap: 10,
+                cursor: manage ? "pointer" : "default",
+                border: manage ? `1.5px solid ${isHidden ? "transparent" : c.color}` : "1.5px solid transparent",
+                transition: "all 0.15s"
+              }}
+            >
+              {manage && (
+                <div
+                  style={{
+                    width: 24, height: 24, borderRadius: 6,
+                    border: `2px solid ${c.color}`,
+                    background: isHidden ? "#fff" : c.color,
+                    color: "#fff",
+                    fontSize: 14, fontWeight: 800, flexShrink: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    pointerEvents: "none"
+                  }}
+                >{isHidden ? "" : "✓"}</div>
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <div style={{ fontSize: 11, color: c.color, fontWeight: 700 }}>
+                  <div style={{ fontSize: 12, color: c.color, fontWeight: 700 }}>
                     {c.icon} {c.label}
+                    {manage && (
+                      <span style={{ fontSize: 10, color: R.textLight, fontWeight: 500, marginLeft: 8 }}>
+                        {isHidden ? "· 숨김" : "· 표시 중"}
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 800, color: over ? R.overBudget : R.textDark }}>
                     {fmt(amt)}
@@ -677,23 +803,14 @@ export default function DashboardPage() {
                   </>
                 )}
               </div>
-            );
-          })}
-        </div>
-      </div>
-      </div>{/* /dashboard-bottom */}
-    </>
-  );
-}
-
-function StatCard({ label, value, sub, pct, color }) {
-  return (
-    <div className="card-sm" style={{ padding: "12px 14px" }}>
-      <div style={{ fontSize: 10, color: R.textLight }}>{label}</div>
-      <div style={{ fontSize: 18, fontWeight: 800, marginTop: 2, letterSpacing: -0.5, color: R.textDark }}>{value}</div>
-      {sub && <div style={{ fontSize: 10, color: R.textMid, marginTop: 2 }}>{sub}</div>}
-      <div className="progress-track" style={{ marginTop: 8, height: 4 }}>
-        <div className="progress-fill" style={{ width: `${Math.min(100, pct)}%`, background: color }} />
+            </div>
+          );
+        })}
+        {!manage && hiddenList.length > 0 && (
+          <div style={{ fontSize: 10, color: R.textLight, textAlign: "center", padding: "4px 0" }}>
+            · {hiddenList.length}개 카테고리 숨김 (표시 관리에서 조정)
+          </div>
+        )}
       </div>
     </div>
   );

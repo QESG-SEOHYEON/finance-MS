@@ -12,7 +12,8 @@ import {
 } from "../db.js";
 import {
   EXPENSE_CATEGORIES, getCategory, mergeCategories,
-  DEFAULT_CATEGORY_KEYS, CATEGORY_COLOR_PRESETS
+  DEFAULT_CATEGORY_KEYS, CATEGORY_COLOR_PRESETS,
+  normalizeSubcats, getSubcatIcon
 } from "../lib/expenseCategories.js";
 import { fmt, fmtWon } from "../schedule.js";
 import TopBar from "../components/TopBar.jsx";
@@ -577,16 +578,21 @@ export default function ExpensesPage() {
                 className="modal-input"
                 style={{ width: 110, padding: "8px 10px", fontSize: 13 }}
               />
+              <input
+                type="text"
+                list={`subcats-preset-${activeCat}`}
+                placeholder="(세부, 자유 입력)"
+                value={newPresetSub}
+                onChange={(e) => setNewPresetSub(e.target.value)}
+                className="modal-input"
+                style={{ width: 140, padding: "8px 10px", fontSize: 13 }}
+              />
               {category.subcats.length > 0 && (
-                <select
-                  value={newPresetSub}
-                  onChange={(e) => setNewPresetSub(e.target.value)}
-                  className="modal-input"
-                  style={{ width: 110, padding: "8px 10px", fontSize: 13 }}
-                >
-                  <option value="">(세부)</option>
-                  {category.subcats.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                <datalist id={`subcats-preset-${activeCat}`}>
+                  {category.subcats.map((s) => (
+                    <option key={s.name} value={s.icon ? `${s.icon} ${s.name}` : s.name} />
+                  ))}
+                </datalist>
               )}
               <input
                 type="text"
@@ -628,16 +634,21 @@ export default function ExpensesPage() {
             className="modal-input"
             style={{ width: 140 }}
           />
+          <input
+            type="text"
+            list={`subcats-custom-${activeCat}`}
+            placeholder={category.subcats.length > 0 ? "(세부, 자유 입력 / 이모지 OK)" : "(세부)"}
+            value={customSub}
+            onChange={(e) => setCustomSub(e.target.value)}
+            className="modal-input"
+            style={{ width: 180 }}
+          />
           {category.subcats.length > 0 && (
-            <select
-              value={customSub}
-              onChange={(e) => setCustomSub(e.target.value)}
-              className="modal-input"
-              style={{ width: 140 }}
-            >
-              <option value="">(세부)</option>
-              {category.subcats.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <datalist id={`subcats-custom-${activeCat}`}>
+              {category.subcats.map((s) => (
+                <option key={s.name} value={s.icon ? `${s.icon} ${s.name}` : s.name} />
+              ))}
+            </datalist>
           )}
           <input
             type="text"
@@ -688,7 +699,10 @@ export default function ExpensesPage() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: R.textDark, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {r.memo || c.label}
-                      {r.subcategory && <span style={{ color: R.textLight, fontWeight: 400, fontSize: 12, marginLeft: 6 }}>· {r.subcategory}</span>}
+                      {r.subcategory && (() => {
+                        const subIcon = getSubcatIcon(c, r.subcategory);
+                        return <span style={{ color: R.textLight, fontWeight: 400, fontSize: 12, marginLeft: 6 }}>· {subIcon ? `${subIcon} ` : ""}{r.subcategory}</span>;
+                      })()}
                     </div>
                     <div style={{ fontSize: 10, color: R.textLight, marginTop: 1 }}>매월 {r.dayOfMonth}일</div>
                   </div>
@@ -865,7 +879,11 @@ export default function ExpensesPage() {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 600, color: R.textDark }}>
-                          {c.label}{e.subcategory ? ` · ${e.subcategory}` : ""}
+                          {c.label}
+                          {e.subcategory && (() => {
+                            const subIcon = getSubcatIcon(c, e.subcategory);
+                            return ` · ${subIcon ? `${subIcon} ` : ""}${e.subcategory}`;
+                          })()}
                           {isRec && <span style={{ fontSize: 10, color: R.rose500, marginLeft: 6 }}>🔁</span>}
                         </div>
                         {e.memo && !isRec && (
@@ -947,16 +965,21 @@ function ExpenseEditor({ expense, allCategories, onSave, onDelete, onClose }) {
           >
             {categoryList.map((c) => <option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}
           </select>
+          <input
+            type="text"
+            list={`subcats-edit-${category}`}
+            placeholder="(세부, 자유 입력)"
+            value={subcategory}
+            onChange={(e) => setSubcategory(e.target.value)}
+            className="modal-input"
+            style={{ width: 150 }}
+          />
           {cat.subcats.length > 0 && (
-            <select
-              value={subcategory}
-              onChange={(e) => setSubcategory(e.target.value)}
-              className="modal-input"
-              style={{ width: 120 }}
-            >
-              <option value="">(세부)</option>
-              {cat.subcats.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <datalist id={`subcats-edit-${category}`}>
+              {cat.subcats.map((s) => (
+                <option key={s.name} value={s.icon ? `${s.icon} ${s.name}` : s.name} />
+              ))}
+            </datalist>
           )}
         </div>
 
@@ -1017,15 +1040,32 @@ function CategoryEditor({ mode, category, isDefault, onSave, onClose }) {
   });
   const [cap, setCap] = useState(category?.cap ?? "");
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const [subcats, setSubcats] = useState(() => normalizeSubcats(category?.subcats));
+  const [subIconPickerIdx, setSubIconPickerIdx] = useState(null); // 어떤 subcat 아이콘 피커가 열려있는지
+
+  const updateSubcat = (idx, patch) => {
+    setSubcats((list) => list.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
+  };
+  const removeSubcat = (idx) => {
+    setSubcats((list) => list.filter((_, i) => i !== idx));
+    setSubIconPickerIdx(null);
+  };
+  const addSubcat = () => {
+    setSubcats((list) => [...list, { name: "", icon: null }]);
+  };
 
   const save = () => {
     const chosen = CATEGORY_COLOR_PRESETS[colorIdx];
+    const cleanedSubcats = subcats
+      .map((s) => ({ name: (s.name || "").trim(), icon: s.icon || null }))
+      .filter((s) => s.name);
     const patch = {
       label: label.trim() || "(이름 없음)",
       icon,
       color: chosen.color,
       bg: chosen.bg,
-      cap: cap === "" ? null : Number(cap)
+      cap: cap === "" ? null : Number(cap),
+      subcats: cleanedSubcats
     };
     onSave(patch);
   };
@@ -1114,7 +1154,94 @@ function CategoryEditor({ mode, category, isDefault, onSave, onClose }) {
           value={cap}
           onChange={(e) => setCap(e.target.value)}
           placeholder="예: 440000"
+          style={{ marginBottom: 12 }}
         />
+
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#7A6060", marginBottom: 6 }}>
+          세부 카테고리 <span style={{ color: "#B8A9A3", fontWeight: 500 }}>· 이름과 이모지 자유 설정</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+          {subcats.length === 0 && (
+            <div style={{ fontSize: 11, color: "#B8A9A3", padding: "4px 0" }}>
+              세부 카테고리 없음. 필요하면 "+ 세부 추가"로 생성하세요.
+            </div>
+          )}
+          {subcats.map((s, idx) => (
+            <div key={idx} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => setSubIconPickerIdx(subIconPickerIdx === idx ? null : idx)}
+                  className="modal-input"
+                  style={{
+                    width: 44, padding: "8px 4px", fontSize: 18, textAlign: "center",
+                    background: "#fff", cursor: "pointer"
+                  }}
+                  title="이모지 선택"
+                >{s.icon || "🏷️"}</button>
+                <input
+                  className="modal-input"
+                  placeholder="세부 이름 (예: 커피)"
+                  value={s.name}
+                  onChange={(e) => updateSubcat(idx, { name: e.target.value })}
+                  style={{ flex: 1, padding: "8px 10px", fontSize: 13 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeSubcat(idx)}
+                  style={{
+                    width: 28, height: 28, borderRadius: 8, border: "none",
+                    background: "#C06060", color: "#fff", cursor: "pointer", fontSize: 13,
+                    flexShrink: 0
+                  }}
+                  title="삭제"
+                >×</button>
+              </div>
+              {subIconPickerIdx === idx && (
+                <div style={{ background: "#FAF5F3", borderRadius: 8, padding: 8 }}>
+                  <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
+                    <input
+                      type="text"
+                      placeholder="직접 입력"
+                      value={s.icon || ""}
+                      onChange={(e) => updateSubcat(idx, { icon: e.target.value || null })}
+                      className="modal-input"
+                      style={{ flex: 1, fontSize: 13, padding: "6px 8px" }}
+                      maxLength={4}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => updateSubcat(idx, { icon: null })}
+                      className="btn btn-sm"
+                      style={{ padding: "0 8px", fontSize: 11 }}
+                    >지우기</button>
+                    <button type="button" className="btn btn-sm" onClick={() => setSubIconPickerIdx(null)}>닫기</button>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(10, 1fr)", gap: 4 }}>
+                    {ICON_OPTIONS.map((ic) => (
+                      <button
+                        key={ic}
+                        type="button"
+                        onClick={() => { updateSubcat(idx, { icon: ic }); setSubIconPickerIdx(null); }}
+                        style={{
+                          width: 28, height: 28, borderRadius: 6, fontSize: 16,
+                          border: s.icon === ic ? "2px solid #C08080" : "1px solid transparent",
+                          background: s.icon === ic ? "#FFF0EC" : "#fff", cursor: "pointer", padding: 0
+                        }}
+                      >{ic}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={addSubcat}
+          style={{ marginBottom: 8, width: "100%", borderStyle: "dashed" }}
+        >+ 세부 추가</button>
 
         <div className="modal-actions">
           <button className="btn btn-sm" onClick={onClose}>취소</button>
