@@ -46,6 +46,118 @@ db.version(3).stores({
   month_schedule: "id"
 });
 
+// v4: 경제 멘토 위젯. 신규 테이블만 추가. 기존 데이터는 그대로 유지됨.
+db.version(4).stores({
+  monthly_status: "id",
+  settings: "id",
+  expenses: "++id, date, category",
+  assets: "id",
+  month_schedule: "id",
+  mentor: "id",
+  mentor_daily: "date",
+  mentor_history: "++id, timestamp, mentorId"
+});
+
+// ---------- mentor ----------
+const MENTOR_ID = "main";
+
+export async function getMentor() {
+  const row = await db.mentor.get(MENTOR_ID);
+  return row || null;
+}
+
+export async function initMentor({ name = "", nickname = "" } = {}) {
+  const existing = await getMentor();
+  if (existing) return existing;
+  const entry = {
+    id: MENTOR_ID,
+    name, nickname,
+    photos: [],
+    showPhoto: true,
+    affinity: 0,
+    installedAt: new Date(),
+    affinityMaxedAt: null
+  };
+  await db.mentor.put(entry);
+  return entry;
+}
+
+export async function updateMentor(patch) {
+  const existing = (await getMentor()) || { id: MENTOR_ID };
+  const next = { ...existing, ...patch, updatedAt: new Date() };
+  await db.mentor.put(next);
+  return next;
+}
+
+export async function adjustAffinity(delta) {
+  const m = (await getMentor()) || (await initMentor());
+  const cur = Number(m.affinity || 0);
+  const raw = cur + Number(delta);
+  const next = Math.max(0, Math.min(10, raw));
+  const crossedMax = cur < 10 && next >= 10;
+  const patch = { affinity: Number(next.toFixed(2)) };
+  if (crossedMax && !m.affinityMaxedAt) patch.affinityMaxedAt = new Date();
+  await updateMentor(patch);
+  return { applied: Number((next - cur).toFixed(2)), affinity: patch.affinity, crossedMax };
+}
+
+function todayKey(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export async function getTodayMentorUsage() {
+  const key = todayKey();
+  const row = await db.mentor_daily.get(key);
+  return row || { date: key, adviceCount: 0, chatUsed: false };
+}
+
+export async function incMentorAdvice() {
+  const row = await getTodayMentorUsage();
+  const next = { ...row, adviceCount: (row.adviceCount || 0) + 1 };
+  await db.mentor_daily.put(next);
+  return next;
+}
+
+export async function markMentorChatUsed() {
+  const row = await getTodayMentorUsage();
+  const next = { ...row, chatUsed: true };
+  await db.mentor_daily.put(next);
+  return next;
+}
+
+export async function addMentorHistory(entry) {
+  return db.mentor_history.add({
+    mentorId: MENTOR_ID,
+    timestamp: new Date(),
+    ...entry
+  });
+}
+
+export async function getMentorHistory({ limit = 100 } = {}) {
+  return db.mentor_history.orderBy("timestamp").reverse().limit(limit).toArray();
+}
+
+export async function getRecentAdviceIds({ days = 7 } = {}) {
+  const since = Date.now() - days * 24 * 60 * 60 * 1000;
+  const rows = await db.mentor_history
+    .where("timestamp").above(new Date(since))
+    .and((r) => r.type === "advice" && !!r.refId)
+    .toArray();
+  return new Set(rows.map((r) => r.refId));
+}
+
+export async function getRecentScenarioIds({ days = 30 } = {}) {
+  const since = Date.now() - days * 24 * 60 * 60 * 1000;
+  const rows = await db.mentor_history
+    .where("timestamp").above(new Date(since))
+    .and((r) => r.type === "chat" && !!r.refId)
+    .toArray();
+  return new Set(rows.map((r) => r.refId));
+}
+
 // ---------- monthly_status ----------
 export async function getMonthStatus(year, month) {
   const id = `${year}-${month}`;

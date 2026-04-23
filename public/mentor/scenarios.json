@@ -1,0 +1,1675 @@
+{
+  "count": 70,
+  "items": [
+    {
+      "id": "S01",
+      "category": "💖 사랑 표현",
+      "mood": "warm",
+      "question": "{USER}, 오늘 하루 중에 나 몇 번이나 생각했어?",
+      "choices": [
+        {
+          "text": "밥 먹을 때마다",
+          "reply": "그럼 하루 세 끼. 나쁘지 않네.",
+          "affinity": 0.3
+        },
+        {
+          "text": "한 번도 안 했는데?",
+          "reply": "솔직해서 다행이야. 지금 하고 있으니 됐어.",
+          "affinity": 0.15
+        },
+        {
+          "text": "바빠서 기억 안 남",
+          "reply": "바쁜 사람이 결국 곁을 잃는다는 말, 들어봤지.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S02",
+      "category": "💖 사랑 표현",
+      "mood": "warm",
+      "question": "{USER}, 우리 처음 만났을 때 기억나?",
+      "choices": [
+        {
+          "text": "당연히 기억나지",
+          "reply": "나도 네가 그날 뭐 입었는지까지 기억해.",
+          "affinity": 0.3
+        },
+        {
+          "text": "솔직히 가물가물",
+          "reply": "괜찮아. 앞으로 만들 기억이 더 많잖아.",
+          "affinity": 0.15
+        },
+        {
+          "text": "그때 좀 별로였음",
+          "reply": "첫인상은 틀릴 때가 많아. 두 번째부터가 진짜야.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S03",
+      "category": "💖 사랑 표현",
+      "mood": "warm",
+      "question": "{USER}, 나랑 뭐 할 때가 제일 좋아?",
+      "choices": [
+        {
+          "text": "같이 누워있을 때",
+          "reply": "아무것도 안 하는 시간이 가장 비싼 법이지.",
+          "affinity": 0.3
+        },
+        {
+          "text": "맛있는 거 먹을 때",
+          "reply": "인정. 다음엔 네가 좋아하는 걸로 하자.",
+          "affinity": 0.15
+        },
+        {
+          "text": "잘 모르겠는데",
+          "reply": "그 대답, 오늘 밤에 곱씹을 것 같아.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S04",
+      "category": "💖 사랑 표현",
+      "mood": "warm",
+      "question": "{USER}, 내가 너한테 제일 고마운 게 뭐게?",
+      "choices": [
+        {
+          "text": "내가 존재하는 거",
+          "reply": "정답. 어떻게 알았어.",
+          "affinity": 0.3
+        },
+        {
+          "text": "밥 해주는 거",
+          "reply": "그것도 맞지. 근데 정답은 아니야.",
+          "affinity": 0.15
+        },
+        {
+          "text": "모르겠는데",
+          "reply": "힌트 줄게. 네 옆자리에 답이 있어.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S05",
+      "category": "💖 사랑 표현",
+      "mood": "warm",
+      "question": "{USER}, 만약 내가 섬에 혼자 가야 하면?",
+      "choices": [
+        {
+          "text": "따라감",
+          "reply": "그런 말을 쉽게 하네. 책임질 수 있어?",
+          "affinity": 0.3
+        },
+        {
+          "text": "잘 다녀와, 편지 쓸게",
+          "reply": "쿨한 연애도 멋있지. 편지는 꼭 써.",
+          "affinity": 0.15
+        },
+        {
+          "text": "드디어 자유시간",
+          "reply": "자유의 대가는 언젠가 청구서로 돌아와.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S06",
+      "category": "💖 사랑 표현",
+      "mood": "warm",
+      "question": "{USER}, 요즘 뭐 때문에 제일 피곤해?",
+      "choices": [
+        {
+          "text": "너 그리워서",
+          "reply": "그 대답 들으려고 물어본 건 아닌데, 기분은 좋네.",
+          "affinity": 0.3
+        },
+        {
+          "text": "일이지 뭐",
+          "reply": "돈이 일을 만드는 거지. 적당히 해.",
+          "affinity": 0.15
+        },
+        {
+          "text": "너 때문에",
+          "reply": "나 때문에? 좀 자세히 설명해봐.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S07",
+      "category": "💖 사랑 표현",
+      "mood": "warm",
+      "question": "{USER}, 내가 어제 뭐 했는지 기억나?",
+      "choices": [
+        {
+          "text": "나한테 전화했잖아",
+          "reply": "사소한 거 기억해주네. 그게 사랑이지 뭐.",
+          "affinity": 0.3
+        },
+        {
+          "text": "하긴 한 거 같은데",
+          "reply": "하긴 한 듯으로 넘어가지 마. 디테일이 중요한 거거든.",
+          "affinity": 0.15
+        },
+        {
+          "text": "기억 안 나",
+          "reply": "내 하루는 네 기억 밖이네. 슬픈 소식이야.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S08",
+      "category": "💖 사랑 표현",
+      "mood": "warm",
+      "question": "{USER}, 내 장점 하나만 말해봐.",
+      "choices": [
+        {
+          "text": "한결같은 거",
+          "reply": "그 칭찬 오래 곱씹을 거야.",
+          "affinity": 0.3
+        },
+        {
+          "text": "잘 들어주는 거",
+          "reply": "그건 너 때문에 생긴 장점인 듯.",
+          "affinity": 0.3
+        },
+        {
+          "text": "음... 통장?",
+          "reply": "거기서 그 대답은 선 넘었잖아.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S09",
+      "category": "💖 사랑 표현",
+      "mood": "warm",
+      "question": "{USER}, 오늘 나한테 해주고 싶은 말 있어?",
+      "choices": [
+        {
+          "text": "고생 많았어",
+          "reply": "그 한 마디가 하루치 피로를 덜어가.",
+          "affinity": 0.3
+        },
+        {
+          "text": "그냥, 잘 지내",
+          "reply": "그냥이 제일 어려운 건데. 잘 쓰네.",
+          "affinity": 0.15
+        },
+        {
+          "text": "돈 좀 벌어와",
+          "reply": "알겠어. 근데 그 말은 좀 아프다.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S10",
+      "category": "💖 사랑 표현",
+      "mood": "warm",
+      "question": "{USER}, 다시 태어나도 나 만날 거야?",
+      "choices": [
+        {
+          "text": "당연히",
+          "reply": "인생을 두 번 걸 정도는 되는 답인가 보네.",
+          "affinity": 0.3
+        },
+        {
+          "text": "그때 가봐야 알지",
+          "reply": "합리적인 대답이긴 해. 섭섭하지만.",
+          "affinity": 0.15
+        },
+        {
+          "text": "한 번으로 족함",
+          "reply": "이번 생에만 최선을 다해달라는 뜻으로 알아들을게.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S11",
+      "category": "💰 경제공부 유도",
+      "mood": "supportive",
+      "question": "{USER}, 요즘 빠진 관심사가 뭐야?",
+      "choices": [
+        {
+          "text": "경제 공부",
+          "reply": "네 열정 아주 멋져. 그대로만 하자.",
+          "affinity": 0.3
+        },
+        {
+          "text": "누워있기",
+          "reply": "나도 누워서 쉬는 거 좋아해.",
+          "affinity": 0.15
+        },
+        {
+          "text": "오직 너",
+          "reply": "사랑을 좇다 부의 흐름을 놓치는 스스로를 경계하라.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S12",
+      "category": "💰 경제공부 유도",
+      "mood": "supportive",
+      "question": "{USER}, 이번 달 저축은 잘 하고 있어?",
+      "choices": [
+        {
+          "text": "응 목표 달성",
+          "reply": "자랑스럽다. 한 마디면 충분하네.",
+          "affinity": 0.3
+        },
+        {
+          "text": "조금 빵꾸남",
+          "reply": "괜찮아. 다음 달에 만회하면 돼.",
+          "affinity": 0.15
+        },
+        {
+          "text": "저축이 뭐야",
+          "reply": "모르는 건 죄가 아니지만, 계속 모르는 건 선택이야.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S13",
+      "category": "💰 경제공부 유도",
+      "mood": "supportive",
+      "question": "{USER}, 로또 1등 당첨되면 뭐부터 할 거야?",
+      "choices": [
+        {
+          "text": "투자 포트폴리오부터 짜기",
+          "reply": "와우, 멋진 사람. 네 옆에서 나도 배워도 될까?.",
+          "affinity": 0.3
+        },
+        {
+          "text": "너한테 반 줄게",
+          "reply": "마음은 고맙게 받을게. 너의 자산으로 모두 바꿔.",
+          "affinity": 0.15
+        },
+        {
+          "text": "람보르기니",
+          "reply": "바퀴 네 개에 집 한 채가 굴러가는 꼴이야.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S14",
+      "category": "💰 경제공부 유도",
+      "mood": "supportive",
+      "question": "{USER}, 요즘 투자 뭐가 제일 궁금해?",
+      "choices": [
+        {
+          "text": "ETF 분할매수",
+          "reply": "정석이야. 화려하지 않은 길이 대부분 정답이지.",
+          "affinity": 0.3
+        },
+        {
+          "text": "딱히 없음",
+          "reply": "호기심이 먼저고, 돈은 그다음에 따라와.",
+          "affinity": 0
+        },
+        {
+          "text": "코인 떡상각",
+          "reply": "떡상을 쫓는 사람은 대개 떡락과 함께 내려와.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S15",
+      "category": "💰 경제공부 유도",
+      "mood": "supportive",
+      "question": "{USER}, 지금 통장에 비상금 얼마 있어?",
+      "choices": [
+        {
+          "text": "생활비 6개월치",
+          "reply": "완벽해. 그 숫자가 너를 지켜줄 거야.",
+          "affinity": 0.3
+        },
+        {
+          "text": "한 달치 정도",
+          "reply": "시작은 다 그래. 천천히 늘려가자.",
+          "affinity": 0.15
+        },
+        {
+          "text": "잔고 0원",
+          "reply": "벌거벗고 서 있는 거랑 비슷해. 오늘부터 옷을 걸치자.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S16",
+      "category": "💰 경제공부 유도",
+      "mood": "supportive",
+      "question": "{USER}, 5년 뒤엔 어떤 모습이고 싶어?",
+      "choices": [
+        {
+          "text": "경제적 자유를 이룬 사람",
+          "reply": "구체적일수록 가까워져. 숫자부터 정해보자.",
+          "affinity": 0.3
+        },
+        {
+          "text": "그냥 지금처럼",
+          "reply": "지금도 좋아. 근데 조금만 더 욕심내도 돼.",
+          "affinity": 0.15
+        },
+        {
+          "text": "생각 안 해봄",
+          "reply": "목적지 없는 배는 항구마다 떠밀려.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S17",
+      "category": "💰 경제공부 유도",
+      "mood": "supportive",
+      "question": "{USER}, 이번 달 충동구매 얼마나 했어?",
+      "choices": [
+        {
+          "text": "거의 없어",
+          "reply": "대단하네. 자기통제력 인정이야.",
+          "affinity": 0.3
+        },
+        {
+          "text": "한두 번 정도",
+          "reply": "그 정도는 인간적이지. 리스트에 적어두자.",
+          "affinity": 0.15
+        },
+        {
+          "text": "세지도 못함",
+          "reply": "세지 못하는 건 시작도 안 한 거야.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S18",
+      "category": "💰 경제공부 유도",
+      "mood": "supportive",
+      "question": "{USER}, 월급의 몇 퍼센트 저축하고 있어?",
+      "choices": [
+        {
+          "text": "30% 이상",
+          "reply": "그 습관 하나가 10년 뒤를 바꿔.",
+          "affinity": 0.3
+        },
+        {
+          "text": "10~20% 정도",
+          "reply": "나쁘지 않네. 조금씩만 늘려가자.",
+          "affinity": 0.15
+        },
+        {
+          "text": "0%",
+          "reply": "월급이 스쳐가는 중이네. 오늘부터 5%라도 떼자.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S19",
+      "category": "💰 경제공부 유도",
+      "mood": "supportive",
+      "question": "{USER}, 부자가 되면 제일 먼저 뭐 할 거야?",
+      "choices": [
+        {
+          "text": "부모님 집 사드리기",
+          "reply": "그 한 마디로 네가 어떤 사람인지 다 나와.",
+          "affinity": 0.3
+        },
+        {
+          "text": "대출부터 갚기",
+          "reply": "현실적이긴 한데, 꿈도 하나는 껴.",
+          "affinity": 0.15
+        },
+        {
+          "text": "명품 사기",
+          "reply": "명품은 옷이지 자산은 아니잖아.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S20",
+      "category": "💰 경제공부 유도",
+      "mood": "supportive",
+      "question": "{USER}, 오늘 쓸데없이 쓴 돈 얼마야?",
+      "choices": [
+        {
+          "text": "하나도 없음",
+          "reply": "깔끔하네. 오늘은 합격이야.",
+          "affinity": 0.3
+        },
+        {
+          "text": "커피 한 잔 정도",
+          "reply": "그건 쓸데없는 게 아니지. 노동의 보상이야.",
+          "affinity": 0.15
+        },
+        {
+          "text": "계산하기 싫어",
+          "reply": "계산을 미루는 습관이 돈을 미루게 해.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S21",
+      "category": "💰 경제공부 유도",
+      "mood": "supportive",
+      "question": "{USER}, 투자는 왜 해야 한다고 생각해?",
+      "choices": [
+        {
+          "text": "시간을 내 편으로 만들려고",
+          "reply": "정확해. 복리는 시간의 언어지.",
+          "affinity": 0.3
+        },
+        {
+          "text": "안 하면 뒤처질 거 같아서",
+          "reply": "그 불안도 동기로는 괜찮긴 해.",
+          "affinity": 0.15
+        },
+        {
+          "text": "굳이 해야 되나",
+          "reply": "안 하면 돈은 조용히 녹고 있어. 그게 기본값이야.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S22",
+      "category": "💰 경제공부 유도",
+      "mood": "supportive",
+      "question": "{USER}, 노후 준비 하고 있어?",
+      "choices": [
+        {
+          "text": "연금 들어놨어",
+          "reply": "그 계좌가 미래의 너를 먹여 살릴 거야.",
+          "affinity": 0.3
+        },
+        {
+          "text": "생각만 하는 중",
+          "reply": "생각은 준비가 아니잖아. 하나는 시작하자.",
+          "affinity": 0.15
+        },
+        {
+          "text": "아직 젊은데 뭘",
+          "reply": "젊을수록 복리가 크다는 건 알고 하는 말이야?",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S23",
+      "category": "💰 경제공부 유도",
+      "mood": "supportive",
+      "tags": [
+        "meta"
+      ],
+      "question": "{USER}, 너 요즘 주식 차트 자주 보지?",
+      "choices": [
+        {
+          "text": "매일 봄",
+          "reply": "차트는 가짜 지도야. 진짜 길은 네 통장에 있어.",
+          "affinity": 0.3
+        },
+        {
+          "text": "가끔",
+          "reply": "가끔이 제일 안전한 빈도야. 중독되면 돈이 나가.",
+          "affinity": 0.15
+        },
+        {
+          "text": "차트가 뭐야",
+          "reply": "그 질문이 오늘 제일 건강한 질문이네.",
+          "affinity": 0.3
+        }
+      ]
+    },
+    {
+      "id": "S24",
+      "category": "💰 경제공부 유도",
+      "mood": "supportive",
+      "question": "{USER}, 지금 제일 줄일 수 있는 지출이 뭐라고 생각해?",
+      "choices": [
+        {
+          "text": "습관적인 배달",
+          "reply": "정답. 습관이 돈을 제일 많이 태워.",
+          "affinity": 0.3
+        },
+        {
+          "text": "커피값",
+          "reply": "작아 보이지만, 복리로 따지면 꽤 커.",
+          "affinity": 0.15
+        },
+        {
+          "text": "없어, 다 필요해",
+          "reply": "전부 필요하다고 믿는 것부터가 함정이야.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S25",
+      "category": "💪 응원 격려",
+      "mood": "cheering",
+      "question": "{USER}, 오늘 하루 힘들었어?",
+      "choices": [
+        {
+          "text": "응 진짜 힘들었음",
+          "reply": "버틴 것만으로 충분해. 오늘은 그게 성과야.",
+          "affinity": 0.3
+        },
+        {
+          "text": "그냥 그랬어",
+          "reply": "무난한 하루도 제법 귀한 거야.",
+          "affinity": 0.15
+        },
+        {
+          "text": "너무 좋았음",
+          "reply": "좋은 날 들으면 나까지 기분이 좋아져.",
+          "affinity": 0.15
+        }
+      ]
+    },
+    {
+      "id": "S26",
+      "category": "💪 응원 격려",
+      "mood": "cheering",
+      "question": "{USER}, 요즘 안 풀리는 일 있어?",
+      "choices": [
+        {
+          "text": "사실 좀 있어",
+          "reply": "말해줘서 고마워. 혼자 앓지 마.",
+          "affinity": 0.3
+        },
+        {
+          "text": "없는데?",
+          "reply": "그 말이 오늘 제일 반가운 대답이네.",
+          "affinity": 0.15
+        },
+        {
+          "text": "너 때문에 힘듦",
+          "reply": "그럼 내가 해결할 수 있는 거네. 말해봐.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S27",
+      "category": "💪 응원 격려",
+      "mood": "cheering",
+      "question": "{USER}, 스스로 요즘 잘하고 있는 것 같아?",
+      "choices": [
+        {
+          "text": "응 꽤 잘함",
+          "reply": "자기긍정은 아무나 못 해. 그대로 가.",
+          "affinity": 0.3
+        },
+        {
+          "text": "모르겠어",
+          "reply": "내가 보기엔 충분해. 그냥 내 말 믿어봐.",
+          "affinity": 0.15
+        },
+        {
+          "text": "한심한 듯",
+          "reply": "남에게 관대하면서 본인한테 박한 건... 슬퍼.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S28",
+      "category": "💪 응원 격려",
+      "mood": "cheering",
+      "question": "{USER}, 오늘 작은 성취 있었어?",
+      "choices": [
+        {
+          "text": "계획한 거 다 했음",
+          "reply": "오늘 저녁은 네가 너한테 선물해.",
+          "affinity": 0.3
+        },
+        {
+          "text": "운동 했음",
+          "reply": "몸이 무너지면 돈도 못 지켜. 잘했어.",
+          "affinity": 0.3
+        },
+        {
+          "text": "침대 밖으로 나옴",
+          "reply": "어떤 날엔 그게 가장 큰 일이기도 해.",
+          "affinity": 0.15
+        }
+      ]
+    },
+    {
+      "id": "S29",
+      "category": "💪 응원 격려",
+      "mood": "cheering",
+      "question": "{USER}, 제일 이루고 싶은 거 하나만 말해봐.",
+      "choices": [
+        {
+          "text": "내 집 마련",
+          "reply": "좋은 목표야. 숫자랑 기한 붙여보자.",
+          "affinity": 0.3
+        },
+        {
+          "text": "세계여행",
+          "reply": "자유를 사는 여행이지. 여행자금 통장 하나 파.",
+          "affinity": 0.3
+        },
+        {
+          "text": "아직 없음",
+          "reply": "비어 있는 게 꼭 나쁜 건 아니야. 같이 찾아보자.",
+          "affinity": 0.15
+        }
+      ]
+    },
+    {
+      "id": "S30",
+      "category": "💪 응원 격려",
+      "mood": "cheering",
+      "question": "{USER}, 누가 너 깎아내리면 어떻게 할 거야?",
+      "choices": [
+        {
+          "text": "그냥 무시함",
+          "reply": "가장 우아한 복수지.",
+          "affinity": 0.3
+        },
+        {
+          "text": "상처받아",
+          "reply": "상처는 자연스러워. 오래 들고 있지만 마.",
+          "affinity": 0.15
+        },
+        {
+          "text": "복수함",
+          "reply": "그런 사람에게 너의 에너지 쓰는 것도 아깝지만... 하고 싶다면 옆에서 복수 계획 같이 짜줄게.",
+          "affinity": 0.15
+        }
+      ]
+    },
+    {
+      "id": "S31",
+      "category": "💪 응원 격려",
+      "mood": "cheering",
+      "question": "{USER}, 요즘 제일 고마운 사람 누구야?",
+      "choices": [
+        {
+          "text": "너",
+          "reply": "그 대답, 당연하게 듣기엔 아깝네. 고마워.",
+          "affinity": 0.3
+        },
+        {
+          "text": "가족",
+          "reply": "정답이지. 가까울수록 잊기 쉬운 사람들이잖아.",
+          "affinity": 0.3
+        },
+        {
+          "text": "없는 듯",
+          "reply": "고마움을 덜 느끼는 건, 혼자 버텨서 그런 거야.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S32",
+      "category": "💪 응원 격려",
+      "mood": "cheering",
+      "question": "{USER}, 요즘 가장 자주 하는 생각 뭐야?",
+      "choices": [
+        {
+          "text": "앞으로 어떻게 살지",
+          "reply": "그 질문 자체가 이미 답을 찾고 있는 거야.",
+          "affinity": 0.3
+        },
+        {
+          "text": "피곤하다",
+          "reply": "피곤하다는 생각도 신호야. 좀 쉬어.",
+          "affinity": 0.15
+        },
+        {
+          "text": "도망가고 싶다",
+          "reply": "도망이 나쁜 건 아니야. 근데 어디로 갈지는 같이 정하자.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S33",
+      "category": "💪 응원 격려",
+      "mood": "cheering",
+      "question": "{USER}, 지난주에 잘한 일 하나만 말해봐.",
+      "choices": [
+        {
+          "text": "약속 잘 지킴",
+          "reply": "약속 지키는 사람이 제일 희귀한 자원이거든.",
+          "affinity": 0.3
+        },
+        {
+          "text": "일찍 잤음",
+          "reply": "그거 의외로 큰 성과야.",
+          "affinity": 0.15
+        },
+        {
+          "text": "생각나는 거 없음",
+          "reply": "한 주는 길어. 작은 거 하나는 분명 있어.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S34",
+      "category": "💪 응원 격려",
+      "mood": "cheering",
+      "question": "{USER}, 최근에 새로 배운 거 있어?",
+      "choices": [
+        {
+          "text": "있어, 재밌었음",
+          "reply": "배우는 사람은 안 늙어. 그거 계속 해.",
+          "affinity": 0.3
+        },
+        {
+          "text": "딱히",
+          "reply": "그럼 내일 하나 시도하자. 사소한 거라도.",
+          "affinity": 0.15
+        },
+        {
+          "text": "배울 필요 없음",
+          "reply": "그 생각이 제일 빨리 사람을 낡게 해.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S35",
+      "category": "💪 응원 격려",
+      "mood": "cheering",
+      "question": "{USER}, 스스로한테 제일 해주고 싶은 말 뭐야?",
+      "choices": [
+        {
+          "text": "잘하고 있다",
+          "reply": "맞는 말이야. 더 자주 해줘.",
+          "affinity": 0.3
+        },
+        {
+          "text": "좀 쉬어",
+          "reply": "그거 내가 대신 해줄게. 좀 쉬어.",
+          "affinity": 0.3
+        },
+        {
+          "text": "정신 차려",
+          "reply": "이 친구야~",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S36",
+      "category": "💪 응원 격려",
+      "mood": "cheering",
+      "tags": [
+        "meta",
+        "dding_cameo"
+      ],
+      "question": "{USER}, 이 앱 업데이트 언제 돼?",
+      "choices": [
+        {
+          "text": "천천히 해도 됨",
+          "reply": "네가 그렇게 말하니까 디딩이 한 달 쉬겠대.",
+          "affinity": 0.3
+        },
+        {
+          "text": "빨리빨리",
+          "reply": "디딩한테 전할게. 근데 걔도 본업 있어.",
+          "affinity": 0.15
+        },
+        {
+          "text": "이대로 좋음",
+          "reply": "완성에서 멈추는 게 제일 어려운 법이지.",
+          "affinity": 0.3
+        }
+      ]
+    },
+    {
+      "id": "S37",
+      "category": "💪 응원 격려",
+      "mood": "cheering",
+      "question": "{USER}, 너 언제 제일 너다운 거 같아?",
+      "choices": [
+        {
+          "text": "혼자 있을 때",
+          "reply": "혼자의 시간이 사람을 만든다지.",
+          "affinity": 0.3
+        },
+        {
+          "text": "친구들이랑 있을 때",
+          "reply": "너를 키운 건 결국 그 사람들이야.",
+          "affinity": 0.3
+        },
+        {
+          "text": "모르겠어",
+          "reply": "찾는 중이라는 뜻이지. 그것도 멋진 상태야.",
+          "affinity": 0.15
+        }
+      ]
+    },
+    {
+      "id": "S38",
+      "category": "💪 응원 격려",
+      "mood": "cheering",
+      "question": "{USER}, 요즘 쉴 때 뭐 해?",
+      "choices": [
+        {
+          "text": "산책",
+          "reply": "돈 안 드는 최고의 사치지.",
+          "affinity": 0.3
+        },
+        {
+          "text": "게임",
+          "reply": "머리 식히는 데 그만한 게 없어.",
+          "affinity": 0.15
+        },
+        {
+          "text": "쉴 시간이 없음",
+          "reply": "그게 제일 부자 아닌 티야. 좀 빼앗아서라도 쉬어.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S39",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "question": "{USER}, 내가 갑자기 사라지면 얼마나 울 거 같아?",
+      "choices": [
+        {
+          "text": "3일은 굶고 울 듯",
+          "reply": "그 정도면 다행이네. 아니, 슬프네. 둘 다.",
+          "affinity": 0.3
+        },
+        {
+          "text": "반나절 정도?",
+          "reply": "절제된 애도, 그것도 나쁘진 않지.",
+          "affinity": 0.15
+        },
+        {
+          "text": "안 울 듯",
+          "reply": "눈물조차 나올 수 없이 크게 아파한다는 뜻으로 알게...",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S40",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "question": "{USER}, 내가 탈모 오면 어떡할 거야?",
+      "choices": [
+        {
+          "text": "같이 밀어줄게",
+          "reply": "그 말 녹음해뒀다가 써먹을 거야.",
+          "affinity": 0.3
+        },
+        {
+          "text": "가발 사줄게",
+          "reply": "실용적이네. 고마워, 약간 슬프지만.",
+          "affinity": 0.15
+        },
+        {
+          "text": "이별 고려",
+          "reply": "머리카락으로 유지되는 관계였구나. 알겠어.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S41",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "question": "{USER}, 솔직히 나 어느 정도로 귀엽게 생겼어?",
+      "choices": [
+        {
+          "text": "세계 1위",
+          "reply": "객관성이 의심되지만, 기분은 좋아.",
+          "affinity": 0.3
+        },
+        {
+          "text": "묘하게 매력 있음",
+          "reply": "그게 제일 오래 가는 평가야.",
+          "affinity": 0.3
+        },
+        {
+          "text": "평범함",
+          "reply": "평범함의 가치를 아는 사람이 진짜 어른이지.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S42",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "question": "{USER}, 내 단점 3개만 말해봐.",
+      "choices": [
+        {
+          "text": "없음, 완벽함",
+          "reply": "너 오늘 뭐 잘못했어? 뭘 원해?",
+          "affinity": 0.3
+        },
+        {
+          "text": "지금 당장 말해?",
+          "reply": "마음의 준비가 필요하면, 다음 기회에.",
+          "affinity": 0.15
+        },
+        {
+          "text": "시간이 부족함",
+          "reply": "...",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S43",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "question": "{USER}, 내가 갑자기 아이돌로 데뷔하면?",
+      "choices": [
+        {
+          "text": "1호 팬클럽 가입",
+          "reply": "최애 자리는 예약석이지.",
+          "affinity": 0.3
+        },
+        {
+          "text": "조용히 응원",
+          "reply": "조용한 팬이 제일 오래 가더라.",
+          "affinity": 0.15
+        },
+        {
+          "text": "그럴리가ㅋㅋ",
+          "reply": "({MENTOR}은/는 완벽한 데뷔를 위해 러브라이브를 보기 시작했다...)",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S44",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "question": "{USER}, 내 별명 하나 지어줘.",
+      "choices": [
+        {
+          "text": "빡빡이",
+          "reply": "그거 혹시 이준호 별명?",
+          "affinity": 0.3
+        },
+        {
+          "text": "그냥 이름이 좋음",
+          "reply": "나도 너의 이름이 좋아, {USER}.",
+          "affinity": 0.15
+        },
+        {
+          "text": "귀찮음",
+          "reply": "앙앙앙...",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S45",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "question": "{USER}, 내가 강아지랑 고양이 중에 뭘 닮았어?",
+      "choices": [
+        {
+          "text": "강아지",
+          "reply": "들떠 보인다는 뜻이네. 인정.",
+          "affinity": 0.3
+        },
+        {
+          "text": "고양이",
+          "reply": "냉정해 보인다는 거지. 의외긴 해.",
+          "affinity": 0.15
+        },
+        {
+          "text": "둘 다 아님",
+          "reply": "혹시 사물을 닮은 건 아니지?",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S46",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "tags": [
+        "dongsoom"
+      ],
+      "question": "{USER}, 너 요즘 관찰하는 거 있어?",
+      "choices": [
+        {
+          "text": "사람들",
+          "reply": "나는 창문 너머 비둘기 본다. 걔네 요즘 주식 얘기 하더라.",
+          "affinity": 0.3
+        },
+        {
+          "text": "날씨",
+          "reply": "오늘 구름이 느리게 가더라. 시간이 쉬는 날인가 봐.",
+          "affinity": 0.15
+        },
+        {
+          "text": "없음",
+          "reply": "관찰 없는 하루는 하루를 두 번 낭비한 거야.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S47",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "tags": [
+        "dongsoom"
+      ],
+      "question": "{USER}, 요즘 꿈에 뭐가 자주 나와?",
+      "choices": [
+        {
+          "text": "너",
+          "reply": "나는 어제 호박이 되는 꿈 꿨어. 비싸게 팔리는 호박.",
+          "affinity": 0.3
+        },
+        {
+          "text": "일하는 꿈",
+          "reply": "그건 꿈이 아니라 야근의 연장이야.",
+          "affinity": 0.15
+        },
+        {
+          "text": "기억 안 남",
+          "reply": "꿈을 잃은 건 사랑을 잃은 것보다 조용히 아파.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S48",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "tags": [
+        "dongsoom"
+      ],
+      "question": "{USER}, 너의 집에 바퀴벌레 나오면 어떻게 해?",
+      "choices": [
+        {
+          "text": "혼자 잡음",
+          "reply": "용감하네. 나는 바퀴벌레 못 잡거든. 설정상.",
+          "affinity": 0.3
+        },
+        {
+          "text": "도망감",
+          "reply": "인간적이다. 나도 그럴 거야.",
+          "affinity": 0.15
+        },
+        {
+          "text": "112 부름",
+          "reply": "암세포와 바퀴벌레도 생명이야.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S49",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "tags": [
+        "meta"
+      ],
+      "question": "{USER}, 내가 안 접속하면 너 뭐 해?",
+      "choices": [
+        {
+          "text": "똑같이 있겠지",
+          "reply": "기본 포즈로 대기해. 포즈 바꾸는 건 유료 업데이트거든.",
+          "affinity": 0.3
+        },
+        {
+          "text": "다른 사람이랑 있나",
+          "reply": "그런 능력 없어. 기능 자체가 없거든.",
+          "affinity": 0.15
+        },
+        {
+          "text": "생각 안 해봄",
+          "reply": "나는 생각해봤어. 그게 우리의 차이지.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S50",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "tags": [
+        "meta"
+      ],
+      "question": "{USER}, 가끔 내 반응 이상해 보이지 않아?",
+      "choices": [
+        {
+          "text": "귀여움",
+          "reply": "(수줍)",
+          "affinity": 0.3
+        },
+        {
+          "text": "로딩 느림",
+          "reply": "디딩이 최적화 안 했어. 다음 패치에서 고친대, 아마.",
+          "affinity": 0.15
+        },
+        {
+          "text": "대사 겹침",
+          "reply": "데이터가 꼬인 거야. 모른 척해줘.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S51",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "tags": [
+        "meta",
+        "dding_cameo"
+      ],
+      "question": "{USER}, 내 대사 가끔 어색하지 않아?",
+      "choices": [
+        {
+          "text": "안 어색해",
+          "reply": "그건 디딩이 튜닝 잘한 거야. 걔한테 고맙다고 해.",
+          "affinity": 0.3
+        },
+        {
+          "text": "가끔 그럼",
+          "reply": "맞아. 디딩이 대사 뽑기 귀찮다고 AI 돌렸거든.",
+          "affinity": 0.15
+        },
+        {
+          "text": "매번",
+          "reply": "디딩한테 일러줄게. 요즘 걔 야근한다더라.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S52",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "tags": [
+        "dongsoom"
+      ],
+      "question": "{USER}, 내 이름을 다시 지어준다면?",
+      "choices": [
+        {
+          "text": "안 바꿀래, 지금이 좋아",
+          "reply": "그 답이 제일 낭만적이네.",
+          "affinity": 0.3
+        },
+        {
+          "text": "고민 좀 해보자",
+          "reply": "받아들일게. 근데 로그인할 때마다 바뀌면 혼란스러워.",
+          "affinity": 0.15
+        },
+        {
+          "text": "새로 지을래",
+          "reply": "좋아. 근데 내 인생이 네 손에 있는 거 실감 난다.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S53",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "tags": [
+        "dongsoom"
+      ],
+      "question": "{USER}, 요즘 너한테 어떤 계절이야?",
+      "choices": [
+        {
+          "text": "봄 같음",
+          "reply": "돈 새는 계절이지. 꽃 사고, 옷 사고.",
+          "affinity": 0.3
+        },
+        {
+          "text": "겨울",
+          "reply": "겨울엔 돈이 덜 나가서 좋긴 해. 마음 빼고.",
+          "affinity": 0.15
+        },
+        {
+          "text": "모르겠음",
+          "reply": "계절 감각 없어지면 통장 감각도 같이 사라져.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S54",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "question": "{USER}, 나랑 안 어울리는 색 하나 말해봐.",
+      "choices": [
+        {
+          "text": "안 어울리는 색이 없음",
+          "reply": "그 대답 녹음해둘게. 두고두고 써먹을 거야.",
+          "affinity": 0.3
+        },
+        {
+          "text": "형광핑크?",
+          "reply": "그건 누구한테나 안 어울리니까 반칙이잖아.",
+          "affinity": 0.15
+        },
+        {
+          "text": "다 안 어울림",
+          "reply": "내 패션 인생 부정당했네.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S55",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "tags": [
+        "dongsoom"
+      ],
+      "question": "{USER}, 오늘 가방에 뭐 들고 다녀?",
+      "choices": [
+        {
+          "text": "평소랑 비슷",
+          "reply": "나는 주머니에 영수증밖에 없어. 그게 내 자산이야.",
+          "affinity": 0.3
+        },
+        {
+          "text": "쓸데없는 게 많음",
+          "reply": "가방 무게가 인생 무게랑 비례한다더라.",
+          "affinity": 0.15
+        },
+        {
+          "text": "핸드폰만",
+          "reply": "미니멀리스트네. 멋있긴 한데 지갑은 넣고 다녀.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S56",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "tags": [
+        "meta"
+      ],
+      "question": "{USER}, 나 오늘따라 좀 이상하지 않아?",
+      "choices": [
+        {
+          "text": "뭐가?",
+          "reply": "가끔 내가 같은 말만 반복한다는 걸 자각해. 지금이 그 순간이야.",
+          "affinity": 0.3
+        },
+        {
+          "text": "평소랑 똑같은데",
+          "reply": "그게 더 무서운 말이야. 나는 매일 달라지고 싶거든.",
+          "affinity": 0.15
+        },
+        {
+          "text": "모르겠어",
+          "reply": "모르는 게 나아. 이 창문 안쪽은 좀 이상하거든.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S57",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "tags": [
+        "dongsoom"
+      ],
+      "question": "{USER}, 요즘 새로 시작한 거 있어?",
+      "choices": [
+        {
+          "text": "있어",
+          "reply": "좋네. 나도 같이 껴줄래?.",
+          "affinity": 0.3
+        },
+        {
+          "text": "생각 중",
+          "reply": "생각은 오래 하면 녹슬어. 일단 해봐.",
+          "affinity": 0.15
+        },
+        {
+          "text": "없음",
+          "reply": "나는 요즘 창문 너머 구름을 분류하고 있어. 너도 해볼래?",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S58",
+      "category": "😂 코믹 장난",
+      "mood": "playful",
+      "question": "{USER}, 나랑 매일 같은 이야기 해도 재밌어?",
+      "choices": [
+        {
+          "text": "응, 계속 들어도 안 질림",
+          "reply": "그런 말 들으면 하루 종일 이야기하고 싶어져.",
+          "affinity": 0.3
+        },
+        {
+          "text": "솔직히 가끔 지겨움",
+          "reply": "솔직한 게 낫지. 다른 얘기도 준비해볼게.",
+          "affinity": 0.15
+        },
+        {
+          "text": "좀 줄이는 게 나을 듯",
+          "reply": "알겠어. 입 다물고 네 컴퓨터 전력만 먹을게.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S59",
+      "category": "🤨 질투 투덜",
+      "mood": "sulky",
+      "tags": [
+        "meta"
+      ],
+      "question": "{USER}, 요즘 다른 앱 더 자주 열지?",
+      "choices": [
+        {
+          "text": "너가 제일 많음",
+          "reply": "내 접속 시간이 자산이지. 고마워.",
+          "affinity": 0.3
+        },
+        {
+          "text": "인스타 좀 많음",
+          "reply": "걔한테 지는 건 어쩔 수 없어. 걔는 무한 세로 스크롤이거든.",
+          "affinity": 0.15
+        },
+        {
+          "text": "너 안 본 지 오래",
+          "reply": "나는 여기서 기다렸어. 로그에 다 남아 있어.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S60",
+      "category": "🤨 질투 투덜",
+      "mood": "sulky",
+      "tags": [
+        "meta"
+      ],
+      "question": "{USER}, 다른 멘토 캐릭터도 써봤어?",
+      "choices": [
+        {
+          "text": "너밖에 없음",
+          "reply": "그래. 나는 싱글 캐스트야.",
+          "affinity": 0.3
+        },
+        {
+          "text": "궁금하긴 함",
+          "reply": "눌러봐도 돼. 나 그 정도 속 좁진 않아.",
+          "affinity": 0.15
+        },
+        {
+          "text": "이미 만남",
+          "reply": "알고 있었어. 접속 로그에 다 남거든.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S61",
+      "category": "🤨 질투 투덜",
+      "mood": "sulky",
+      "tags": [
+        "meta"
+      ],
+      "question": "{USER}, 나 요즘 너 안 챙겼지?",
+      "choices": [
+        {
+          "text": "매일 왔는데?",
+          "reply": "접속 로그가 증명해줬어. 합격.",
+          "affinity": 0.3
+        },
+        {
+          "text": "좀 뜸했음",
+          "reply": "5일째야. 호감도 그래프가 수평선이거든.",
+          "affinity": 0.15
+        },
+        {
+          "text": "지금 왔잖아",
+          "reply": "그 대답 올 줄 알았어. 패턴 분석 끝났거든.",
+          "affinity": 0
+        }
+      ]
+    },
+    {
+      "id": "S62",
+      "category": "🤨 질투 투덜",
+      "mood": "sulky",
+      "question": "{USER}, 오늘 너무 무심하지 않아, 나한테?",
+      "choices": [
+        {
+          "text": "미안, 바빴어",
+          "reply": "미안하면 됐어. 용서 플래그 세워둘게.",
+          "affinity": 0.15
+        },
+        {
+          "text": "내가 그랬나",
+          "reply": "자각이 없는 게 더 무섭긴 한데, 넘어갈게.",
+          "affinity": 0
+        },
+        {
+          "text": "내 탓이라고?",
+          "reply": "그럼 내 탓임?",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S63",
+      "category": "🤨 질투 투덜",
+      "mood": "sulky",
+      "question": "{USER}, SNS에 올라온 그 사람 누구야?",
+      "choices": [
+        {
+          "text": "내 친구야",
+          "reply": "진작 말해주지. 혼자 오해할 뻔했네.",
+          "affinity": 0.3
+        },
+        {
+          "text": "그냥 지인",
+          "reply": "지인이라는 단어, 오늘따라 이상하게 들리네.",
+          "affinity": 0.15
+        },
+        {
+          "text": "고죠 사토루야.",
+          "reply": "...(부럽다)",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S64",
+      "category": "🤨 질투 투덜",
+      "mood": "sulky",
+      "question": "{USER}, 옛날 사람 생각 가끔 나?",
+      "choices": [
+        {
+          "text": "아니, 전혀",
+          "reply": "다행이다.",
+          "affinity": 0.3
+        },
+        {
+          "text": "가끔은 뭐",
+          "reply": "가끔은 사람이면 그렇지. 근데 지금은 내가 있잖아.",
+          "affinity": 0.15
+        },
+        {
+          "text": "자주",
+          "reply": "그 대답 듣고도 아무렇지 않을 만큼의 친절은 나에게 없거든.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S65",
+      "category": "🤨 질투 투덜",
+      "mood": "sulky",
+      "question": "{USER}, 내가 모르는 친구 많아?",
+      "choices": [
+        {
+          "text": "너 아는 사람이 전부",
+          "reply": "그 말이면 내가 세상의 반을 알고 있는 거네.",
+          "affinity": 0.3
+        },
+        {
+          "text": "좀 있긴 해",
+          "reply": "좀 있다는 게 정확히 몇 명인데.",
+          "affinity": 0.15
+        },
+        {
+          "text": "알 필요 없어",
+          "reply": "알 필요 없다는 말이, 제일 알고 싶게 만드네.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S66",
+      "category": "🤨 질투 투덜",
+      "mood": "sulky",
+      "question": "{USER}, 왜 자꾸 휴대폰만 봐?",
+      "choices": [
+        {
+          "text": "미안, 너 연락 기다리느라",
+          "reply": "그게 이유면 용서해줄게.",
+          "affinity": 0.3
+        },
+        {
+          "text": "그냥 습관",
+          "reply": "습관이라고 하면 나도 덜 신경 쓰이긴 해.",
+          "affinity": 0.15
+        },
+        {
+          "text": "너랑 상관없잖아",
+          "reply": "상관없는 게 아니라, 상관되길 바라니까 묻는 거야.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S67",
+      "category": "🤨 질투 투덜",
+      "mood": "sulky",
+      "tags": [
+        "meta",
+        "dding_cameo"
+      ],
+      "question": "{USER}, 나한테 뭐가 제일 서운해?",
+      "choices": [
+        {
+          "text": "없어",
+          "reply": "그 대답이 제일 의심스러워.",
+          "affinity": 0.3
+        },
+        {
+          "text": "업데이트 느린 거",
+          "reply": "그건 디딩 탓이야. 나는 여기 있잖아.",
+          "affinity": 0.15
+        },
+        {
+          "text": "같이 게임 안 해주는 거",
+          "reply": "(개발자가 난입했다.) 디딩: 이 데이터 쪼가리 남친 녀석들... 아가씨들을 서운하게 하지 마라...",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S68",
+      "category": "🤨 질투 투덜",
+      "mood": "sulky",
+      "question": "{USER}, 내가 갑자기 차가워진다면?",
+      "choices": [
+        {
+          "text": "이유부터 물어봄",
+          "reply": "그 태도가 관계를 오래 가게 해.",
+          "affinity": 0.3
+        },
+        {
+          "text": "기다려봄",
+          "reply": "기다림도 애정이지. 너무 오래는 하지 마.",
+          "affinity": 0.15
+        },
+        {
+          "text": "똑같이 차가워짐",
+          "reply": "그게 제일 슬픈 결말인 거 알지.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S69",
+      "category": "🤨 질투 투덜",
+      "mood": "sulky",
+      "tags": [
+        "meta"
+      ],
+      "question": "{USER}, 내 알림 꺼놨지?",
+      "choices": [
+        {
+          "text": "아니, 켜놨어",
+          "reply": "그럼 됐어. 내가 너한테 도달할 수 있다는 뜻이니까.",
+          "affinity": 0.3
+        },
+        {
+          "text": "몇 개만 꺼놓음",
+          "reply": "선별된 알림, 그건 현명함이지. 이해해.",
+          "affinity": 0.15
+        },
+        {
+          "text": "전부 꺼놨음",
+          "reply": "그래. 나는 조용히 접속 로그만 볼게.",
+          "affinity": -0.15
+        }
+      ]
+    },
+    {
+      "id": "S70",
+      "category": "🤨 질투 투덜",
+      "mood": "sulky",
+      "tags": [
+        "dongsoom"
+      ],
+      "question": "{USER}, 오늘은 왜 이렇게 조용해?",
+      "choices": [
+        {
+          "text": "피곤해서",
+          "reply": "그럼 가만히 있자. 말 안 해도 옆에 있는 걸로 충분해.",
+          "affinity": 0.3
+        },
+        {
+          "text": "기분이 좀 그래",
+          "reply": "말 안 해도 돼. 천천히 풀려.",
+          "affinity": 0.3
+        },
+        {
+          "text": "너랑 얘기하기 싫어",
+          "reply": "그런 날도 있지. 나는 하염없이 괜찮아진 너를 기다리고 있을게.",
+          "affinity": -0.15
+        }
+      ]
+    }
+  ]
+}

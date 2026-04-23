@@ -16,6 +16,7 @@ import { detectRisks } from "../lib/risks.js";
 import { EXPENSE_CATEGORIES, mergeCategories } from "../lib/expenseCategories.js";
 import { aggregateRange, aggregateWeeklyRange } from "../lib/aggregate.js";
 import TopBar from "../components/TopBar.jsx";
+import MentorCard from "../components/mentor/MentorCard.jsx";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend
@@ -346,6 +347,11 @@ export default function DashboardPage() {
           ))}
         </div>
       )}
+
+      {/* 경제 멘토 위젯 (컴팩트) */}
+      <div style={{ marginBottom: 16 }}>
+        <MentorCard variant="compact" />
+      </div>
 
       {/* Top overview row: Net worth (wider) + 3 stat cards stacked */}
       <div className="dashboard-overview" style={{ marginBottom: 16 }}>
