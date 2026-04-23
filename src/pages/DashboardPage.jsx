@@ -402,6 +402,16 @@ export default function DashboardPage() {
             <span>1억</span>
           </div>
         </div>
+
+        {/* Quick nav — 다른 페이지 바로가기 */}
+        <div style={{
+          marginTop: 14, paddingTop: 12, borderTop: `1px solid ${R.border}`,
+          display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8
+        }}>
+          <QuickNavCard icon="📅" label="자산 캘린더" sub="이번 달 일정" color={R.rose400} target="calendar" />
+          <QuickNavCard icon="💸" label="지출 관리" sub={`이번 달 ${fmt(expenseSums.total)}`} color={R.warm} target="expenses" />
+          <QuickNavCard icon="📰" label="오늘의 경제" sub="뉴스 · 멘토" color={R.lavender} target="economy" />
+        </div>
       </div>
 
       {/* 3 stat cards stacked vertically */}
@@ -695,6 +705,43 @@ export default function DashboardPage() {
       />
       </div>{/* /dashboard-bottom */}
     </>
+  );
+}
+
+function QuickNavCard({ icon, label, sub, color, target }) {
+  return (
+    <button
+      onClick={() => { window.location.hash = `/${target}`; }}
+      style={{
+        padding: "10px 12px", borderRadius: 10,
+        background: "#fff", border: `1px solid ${R.border}`,
+        cursor: "pointer", fontFamily: "inherit",
+        display: "flex", alignItems: "center", gap: 10,
+        textAlign: "left", transition: "all 0.15s"
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = color;
+        e.currentTarget.style.transform = "translateY(-1px)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = R.border;
+        e.currentTarget.style.transform = "translateY(0)";
+      }}
+    >
+      <div style={{
+        width: 34, height: 34, borderRadius: 9,
+        background: color + "22", color: color,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 18, flexShrink: 0
+      }}>{icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: R.textDark }}>{label}</div>
+        <div style={{ fontSize: 10, color: R.textLight, marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {sub}
+        </div>
+      </div>
+      <div style={{ fontSize: 16, color: R.textLight, flexShrink: 0 }}>›</div>
+    </button>
   );
 }
 

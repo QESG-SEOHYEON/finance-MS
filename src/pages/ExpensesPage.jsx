@@ -34,6 +34,17 @@ const R = {
 
 const BUDGET_CAP = 890000;
 
+function StepBadge({ n, color = "#C08080" }) {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      width: 20, height: 20, borderRadius: 999,
+      background: color, color: "#fff",
+      fontSize: 11, fontWeight: 800, flexShrink: 0
+    }}>{n}</span>
+  );
+}
+
 export default function ExpensesPage() {
   const today = useMemo(() => new Date(), []);
   const [year, setYear] = useState(today.getFullYear());
@@ -398,107 +409,167 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      {/* Category tabs - full width horizontal */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap", alignItems: "stretch" }}>
-        {allCategories.map((c) => {
-          const active = activeCat === c.key;
-          const amt = sums[c.key] || 0;
-          const pct = c.cap ? Math.min(100, (amt / c.cap) * 100) : 0;
-          const over = c.cap && amt > c.cap * 0.8;
-          const isDefault = DEFAULT_CATEGORY_KEYS.has(c.key);
-          return (
-            <div
-              key={c.key}
-              style={{
-                flex: "1 1 220px",
-                position: "relative",
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "12px 14px", borderRadius: 14,
-                border: `1.5px solid ${active ? c.color : R.border}`,
-                background: active ? c.bg : "rgba(255,255,255,0.8)",
-                cursor: "pointer", transition: "all 0.15s"
-              }}
-              onClick={() => setActiveCat(c.key)}
-            >
-              <span style={{ fontSize: 20 }}>{c.icon}</span>
-              <div style={{ textAlign: "left", flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: active ? c.color : R.textDark }}>
-                  {c.label}
-                </div>
-                <div style={{ fontSize: 11, color: over ? R.over : R.textLight, marginTop: 2, fontWeight: 600 }}>
-                  {fmt(amt)}{c.cap ? ` / ${fmt(c.cap)} (${pct.toFixed(0)}%)` : ""}
-                </div>
-              </div>
-              {manageCategories && (
-                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setCategoryEditor({ mode: "edit", key: c.key }); }}
-                    style={{
-                      width: 26, height: 26, borderRadius: 6, border: "none",
-                      background: "#fff", color: c.color, cursor: "pointer", fontSize: 12
-                    }}
-                    title="편집"
-                  >✎</button>
-                  {!isDefault && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); deleteCategory(c.key); }}
-                      style={{
-                        width: 26, height: 26, borderRadius: 6, border: "none",
-                        background: R.over, color: "#fff", cursor: "pointer", fontSize: 12
-                      }}
-                      title="삭제"
-                    >×</button>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-        {manageCategories && (
+      {/* Step 1: Category selector */}
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="section-title" style={{ marginBottom: 4 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <StepBadge n="1" />
+            <span style={{ fontWeight: 700 }}>카테고리</span>
+            <span style={{ fontSize: 11, color: R.textLight, fontWeight: 500 }}>
+              · 기록할 항목을 골라주세요
+            </span>
+          </span>
           <button
-            onClick={() => setCategoryEditor({ mode: "create" })}
+            className="btn btn-sm"
+            onClick={() => setManageCategories((v) => !v)}
             style={{
-              flex: "0 0 auto",
-              padding: "12px 18px", borderRadius: 14,
-              border: `1.5px dashed ${R.rose400}`,
-              background: "rgba(255,255,255,0.7)",
-              cursor: "pointer", color: R.rose500, fontWeight: 700, fontSize: 13
+              background: manageCategories ? R.rose400 : "#fff",
+              color: manageCategories ? "#fff" : R.textMid,
+              borderColor: manageCategories ? R.rose400 : R.border,
+              fontSize: 11, padding: "0 10px"
             }}
-          >+ 카테고리</button>
-        )}
-      </div>
+          >
+            {manageCategories ? "완료" : "✎ 관리"}
+          </button>
+        </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-        <button
-          className="btn btn-sm"
-          onClick={() => setManageCategories((v) => !v)}
-          style={{ background: manageCategories ? R.rose400 : "#fff", color: manageCategories ? "#fff" : R.textMid, borderColor: manageCategories ? R.rose400 : R.border }}
-        >
-          {manageCategories ? "완료" : "✎ 카테고리 관리"}
-        </button>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+          {allCategories.map((c) => {
+            const active = activeCat === c.key;
+            const amt = sums[c.key] || 0;
+            const over = c.cap && amt > c.cap * 0.8;
+            const isDefault = DEFAULT_CATEGORY_KEYS.has(c.key);
+            return (
+              <div key={c.key} style={{ display: "inline-flex", alignItems: "stretch" }}>
+                <button
+                  onClick={() => {
+                    if (manageCategories) setCategoryEditor({ mode: "edit", key: c.key });
+                    else setActiveCat(c.key);
+                  }}
+                  title={manageCategories ? "탭하여 편집" : c.label}
+                  style={{
+                    padding: "7px 12px",
+                    borderRadius: manageCategories && !isDefault ? "999px 0 0 999px" : 999,
+                    border: `1.5px solid ${active ? c.color : R.border}`,
+                    borderRight: manageCategories && !isDefault ? "none" : undefined,
+                    background: active ? c.bg : "#fff",
+                    color: active ? c.color : R.textMid,
+                    fontSize: 12, fontWeight: active ? 700 : 500,
+                    cursor: "pointer", fontFamily: "inherit",
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    transition: "all 0.15s"
+                  }}
+                >
+                  <span style={{ fontSize: 14 }}>{c.icon}</span>
+                  <span>{c.label}</span>
+                  {amt > 0 && (
+                    <span style={{ fontSize: 10, color: over ? R.over : active ? c.color : R.textLight, fontWeight: 600, opacity: 0.85 }}>
+                      {fmt(amt)}
+                    </span>
+                  )}
+                </button>
+                {manageCategories && !isDefault && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteCategory(c.key); }}
+                    title="삭제"
+                    style={{
+                      padding: "0 10px", borderRadius: "0 999px 999px 0",
+                      border: `1.5px solid ${active ? c.color : R.border}`,
+                      background: R.over, color: "#fff",
+                      fontSize: 12, cursor: "pointer", fontFamily: "inherit"
+                    }}
+                  >×</button>
+                )}
+              </div>
+            );
+          })}
+          {manageCategories && (
+            <button
+              onClick={() => setCategoryEditor({ mode: "create" })}
+              style={{
+                padding: "7px 14px", borderRadius: 999,
+                border: `1.5px dashed ${R.rose400}`,
+                background: "#fff",
+                cursor: "pointer", color: R.rose500, fontWeight: 700, fontSize: 12,
+                fontFamily: "inherit"
+              }}
+            >+ 새 카테고리</button>
+          )}
+        </div>
+
+        {category.cap && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: R.textLight, marginBottom: 4, fontWeight: 600 }}>
+              <span>{category.icon} {category.label} 이번 달</span>
+              <span>{fmt(sums[activeCat] || 0)} / {fmt(category.cap)} ({Math.round(((sums[activeCat] || 0) / category.cap) * 100)}%)</span>
+            </div>
+            <div className="progress-track" style={{ height: 4 }}>
+              <div className="progress-fill" style={{
+                width: `${Math.min(100, ((sums[activeCat] || 0) / category.cap) * 100)}%`,
+                background: (sums[activeCat] || 0) > category.cap ? R.over : category.color
+              }} />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 2-column layout: left = inputs, right = log */}
       <div className="expenses-main-grid">
       <div className="expenses-left">
 
-      {/* Card 1: 프리셋 빠른 추가 */}
+      {/* Step 2: Record */}
       <div className="card" style={{ marginBottom: 12, background: category.bg, borderColor: category.color + "40" }}>
-        <div className="section-title">
-          <span style={{ color: category.color, display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 16 }}>⚡</span>
-            {category.icon} {category.label} 프리셋
+        <div className="section-title" style={{ marginBottom: 4 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <StepBadge n="2" color={category.color} />
+            <span style={{ color: category.color, fontWeight: 700 }}>
+              {category.icon} {category.label} 기록
+            </span>
           </span>
-          <button
-            className="btn btn-sm"
-            onClick={() => setManagePresets((v) => !v)}
-            style={{ background: managePresets ? category.color : "#fff", color: managePresets ? "#fff" : R.textMid }}
-          >
-            {managePresets ? "완료" : "프리셋 관리"}
-          </button>
+          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 4,
+              background: "#fff", border: `1px solid ${category.color}40`, borderRadius: 8,
+              padding: "2px 4px 2px 8px"
+            }}>
+              <span style={{ fontSize: 11, color: R.textMid }}>📅</span>
+              <input
+                type="date"
+                value={inputDate}
+                min={monthMin}
+                max={monthMax}
+                onChange={(e) => setInputDate(e.target.value)}
+                style={{
+                  border: "none", outline: "none", fontSize: 12, fontWeight: 600,
+                  color: inputDate === defaultInputDate ? R.textDark : category.color,
+                  fontFamily: "inherit", background: "transparent", padding: "4px 0"
+                }}
+                title="기록할 날짜"
+              />
+              {inputDate !== defaultInputDate && (
+                <button
+                  className="btn btn-sm btn-icon"
+                  onClick={() => setInputDate(defaultInputDate)}
+                  title="오늘로 되돌리기"
+                  style={{ width: 20, height: 20, fontSize: 11 }}
+                >↺</button>
+              )}
+            </div>
+            <button
+              className="btn btn-sm"
+              onClick={() => setManagePresets((v) => !v)}
+              style={{
+                background: managePresets ? category.color : "#fff",
+                color: managePresets ? "#fff" : R.textMid,
+                fontSize: 11, padding: "0 10px"
+              }}
+            >
+              {managePresets ? "완료" : "✎ 프리셋"}
+            </button>
+          </div>
         </div>
-        <div style={{ fontSize: 11, color: R.textMid, marginTop: -6, marginBottom: 10 }}>
-          자주 쓰는 지출을 한 번에 기록 · 탭하면 추가됩니다
+        <div style={{ fontSize: 11, color: R.textMid, marginTop: 2, marginBottom: 12 }}>
+          ⚡ 프리셋 탭으로 빠르게 · 또는 아래에서 금액 직접 입력
         </div>
 
         {allPresets.length > 0 ? (
@@ -611,54 +682,53 @@ export default function ExpensesPage() {
             </div>
           </div>
         )}
-      </div>
 
-      {/* Card 2: 일회성 직접 입력 */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="section-title">
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 16 }}>✏️</span>
-            직접 입력
-          </span>
-        </div>
-        <div style={{ fontSize: 11, color: R.textMid, marginTop: -6, marginBottom: 10 }}>
-          한 번만 쓰는 지출 · 금액/메모 자유 입력
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <input
-            type="number"
-            inputMode="numeric"
-            placeholder="금액"
-            value={customAmount}
-            onChange={(e) => setCustomAmount(e.target.value)}
-            className="modal-input"
-            style={{ width: 140 }}
-          />
-          <input
-            type="text"
-            list={`subcats-custom-${activeCat}`}
-            placeholder={category.subcats.length > 0 ? "(세부, 자유 입력 / 이모지 OK)" : "(세부)"}
-            value={customSub}
-            onChange={(e) => setCustomSub(e.target.value)}
-            className="modal-input"
-            style={{ width: 180 }}
-          />
-          {category.subcats.length > 0 && (
-            <datalist id={`subcats-custom-${activeCat}`}>
-              {category.subcats.map((s) => (
-                <option key={s.name} value={s.icon ? `${s.icon} ${s.name}` : s.name} />
-              ))}
-            </datalist>
-          )}
-          <input
-            type="text"
-            placeholder="메모 (선택)"
-            value={customMemo}
-            onChange={(e) => setCustomMemo(e.target.value)}
-            className="modal-input"
-            style={{ flex: 1, minWidth: 180 }}
-          />
-          <button className="btn btn-primary" onClick={addCustom}>추가</button>
+        {/* 직접 입력 (Step 2 안쪽 서브섹션) */}
+        <div style={{
+          marginTop: 12, padding: 10, borderRadius: 10,
+          background: "rgba(255,255,255,0.6)",
+          border: `1px solid ${category.color}22`
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: category.color, marginBottom: 8, display: "inline-flex", gap: 4, alignItems: "center" }}>
+            ✏️ 직접 입력
+            <span style={{ color: R.textLight, fontWeight: 500 }}>· 한 번만 쓰는 지출</span>
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <input
+              type="number"
+              inputMode="numeric"
+              placeholder="금액"
+              value={customAmount}
+              onChange={(e) => setCustomAmount(e.target.value)}
+              className="modal-input"
+              style={{ width: 120, padding: "8px 10px", fontSize: 13 }}
+            />
+            <input
+              type="text"
+              list={`subcats-custom-${activeCat}`}
+              placeholder={category.subcats.length > 0 ? "(세부, 자유 입력 / 이모지 OK)" : "(세부)"}
+              value={customSub}
+              onChange={(e) => setCustomSub(e.target.value)}
+              className="modal-input"
+              style={{ width: 170, padding: "8px 10px", fontSize: 13 }}
+            />
+            {category.subcats.length > 0 && (
+              <datalist id={`subcats-custom-${activeCat}`}>
+                {category.subcats.map((s) => (
+                  <option key={s.name} value={s.icon ? `${s.icon} ${s.name}` : s.name} />
+                ))}
+              </datalist>
+            )}
+            <input
+              type="text"
+              placeholder="메모 (선택)"
+              value={customMemo}
+              onChange={(e) => setCustomMemo(e.target.value)}
+              className="modal-input"
+              style={{ flex: 1, minWidth: 140, padding: "8px 10px", fontSize: 13 }}
+            />
+            <button className="btn btn-primary btn-sm" onClick={addCustom} style={{ padding: "0 16px" }}>추가</button>
+          </div>
         </div>
       </div>
 
@@ -801,26 +871,13 @@ export default function ExpensesPage() {
 
       {/* Log + search */}
       <div className="card expenses-right">
-        <div className="section-title">
+        <div className="section-title" style={{ marginBottom: 8 }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-            기록
-            <input
-              type="date"
-              value={inputDate}
-              min={monthMin}
-              max={monthMax}
-              onChange={(e) => setInputDate(e.target.value)}
-              className="btn btn-sm"
-              style={{ padding: "0 10px", fontWeight: 600, color: R.textDark, background: "#fff" }}
-              title="기록할 날짜 (빠른 추가에 반영됨)"
-            />
-            {inputDate !== defaultInputDate && (
-              <button
-                className="btn btn-sm btn-icon"
-                onClick={() => setInputDate(defaultInputDate)}
-                title="오늘로 되돌리기"
-              >↺</button>
-            )}
+            <StepBadge n="3" />
+            <span style={{ fontWeight: 700 }}>이번 달 기록</span>
+            <span style={{ fontSize: 11, color: R.textLight, fontWeight: 500 }}>
+              · 탭하여 수정 · 삭제
+            </span>
           </span>
           <div style={{ display: "flex", gap: 6 }}>
             <select
@@ -834,11 +891,11 @@ export default function ExpensesPage() {
             </select>
             <input
               type="text"
-              placeholder="🔍 메모/세부 검색"
+              placeholder="🔍 검색"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="btn btn-sm"
-              style={{ width: 160, fontWeight: 500 }}
+              style={{ width: 140, fontWeight: 500 }}
             />
           </div>
         </div>
