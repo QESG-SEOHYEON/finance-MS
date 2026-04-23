@@ -66,6 +66,15 @@ export default function ExpensesPage() {
   const [inputDate, setInputDate] = useState(defaultInputDate);
   useEffect(() => { setInputDate(defaultInputDate); }, [defaultInputDate]);
 
+  // 메인 카테고리 전환 시 직접 입력 · 프리셋 편집 폼의 세부 필드 초기화
+  useEffect(() => {
+    setCustomSub("");
+    setNewPresetSub("");
+    setNewPresetAmount("");
+    setNewPresetLabel("");
+    setEditingPreset(null);
+  }, [activeCat]);
+
   const monthMin = `${year}-${String(month).padStart(2, "0")}-01`;
   const monthMax = `${year}-${String(month).padStart(2, "0")}-${String(new Date(year, month, 0).getDate()).padStart(2, "0")}`;
 
@@ -651,20 +660,12 @@ export default function ExpensesPage() {
               />
               <input
                 type="text"
-                list={`subcats-preset-${activeCat}`}
-                placeholder="(세부, 자유 입력)"
+                placeholder="세부 (자유 입력)"
                 value={newPresetSub}
                 onChange={(e) => setNewPresetSub(e.target.value)}
                 className="modal-input"
-                style={{ width: 140, padding: "8px 10px", fontSize: 13 }}
+                style={{ width: 160, padding: "8px 10px", fontSize: 13 }}
               />
-              {category.subcats.length > 0 && (
-                <datalist id={`subcats-preset-${activeCat}`}>
-                  {category.subcats.map((s) => (
-                    <option key={s.name} value={s.icon ? `${s.icon} ${s.name}` : s.name} />
-                  ))}
-                </datalist>
-              )}
               <input
                 type="text"
                 placeholder="라벨 (예: ☕ 단골 카페 ₩4,800)"
@@ -680,6 +681,31 @@ export default function ExpensesPage() {
                 <button className="btn btn-sm" onClick={cancelEditPreset}>취소</button>
               )}
             </div>
+            {/* 세부 카테고리 chip 선택 — 프리셋에도 동일하게 */}
+            {category.subcats.length > 0 && (
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 8 }}>
+                {category.subcats.map((s) => {
+                  const val = s.icon ? `${s.icon} ${s.name}` : s.name;
+                  const active = newPresetSub === val;
+                  return (
+                    <button
+                      key={s.name}
+                      type="button"
+                      onClick={() => setNewPresetSub(active ? "" : val)}
+                      style={{
+                        padding: "3px 9px", borderRadius: 999,
+                        border: `1px solid ${active ? category.color : category.color + "55"}`,
+                        background: active ? category.bg : "#fff",
+                        color: active ? category.color : R.textMid,
+                        fontSize: 11, fontWeight: active ? 700 : 500,
+                        cursor: "pointer", fontFamily: "inherit"
+                      }}
+                      title={active ? "탭하여 해제" : `"${val}" 선택`}
+                    >{val}</button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -705,20 +731,12 @@ export default function ExpensesPage() {
             />
             <input
               type="text"
-              list={`subcats-custom-${activeCat}`}
-              placeholder={category.subcats.length > 0 ? "(세부, 자유 입력 / 이모지 OK)" : "(세부)"}
+              placeholder={category.subcats.length > 0 ? "세부 (아래 태그 탭 or 자유 입력)" : "세부 (선택)"}
               value={customSub}
               onChange={(e) => setCustomSub(e.target.value)}
               className="modal-input"
-              style={{ width: 170, padding: "8px 10px", fontSize: 13 }}
+              style={{ width: 200, padding: "8px 10px", fontSize: 13 }}
             />
-            {category.subcats.length > 0 && (
-              <datalist id={`subcats-custom-${activeCat}`}>
-                {category.subcats.map((s) => (
-                  <option key={s.name} value={s.icon ? `${s.icon} ${s.name}` : s.name} />
-                ))}
-              </datalist>
-            )}
             <input
               type="text"
               placeholder="메모 (선택)"
@@ -729,6 +747,31 @@ export default function ExpensesPage() {
             />
             <button className="btn btn-primary btn-sm" onClick={addCustom} style={{ padding: "0 16px" }}>추가</button>
           </div>
+          {/* 세부 카테고리 chip 선택 — 이모지 포함 값을 바로 넣어줌 */}
+          {category.subcats.length > 0 && (
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 8 }}>
+              {category.subcats.map((s) => {
+                const val = s.icon ? `${s.icon} ${s.name}` : s.name;
+                const active = customSub === val;
+                return (
+                  <button
+                    key={s.name}
+                    type="button"
+                    onClick={() => setCustomSub(active ? "" : val)}
+                    style={{
+                      padding: "4px 10px", borderRadius: 999,
+                      border: `1px solid ${active ? category.color : category.color + "55"}`,
+                      background: active ? category.bg : "#fff",
+                      color: active ? category.color : R.textMid,
+                      fontSize: 12, fontWeight: active ? 700 : 500,
+                      cursor: "pointer", fontFamily: "inherit"
+                    }}
+                    title={active ? "탭하여 해제" : `"${val}" 선택`}
+                  >{val}</button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1024,21 +1067,37 @@ function ExpenseEditor({ expense, allCategories, onSave, onDelete, onClose }) {
           </select>
           <input
             type="text"
-            list={`subcats-edit-${category}`}
-            placeholder="(세부, 자유 입력)"
+            placeholder="세부 (자유 입력)"
             value={subcategory}
             onChange={(e) => setSubcategory(e.target.value)}
             className="modal-input"
             style={{ width: 150 }}
           />
-          {cat.subcats.length > 0 && (
-            <datalist id={`subcats-edit-${category}`}>
-              {cat.subcats.map((s) => (
-                <option key={s.name} value={s.icon ? `${s.icon} ${s.name}` : s.name} />
-              ))}
-            </datalist>
-          )}
         </div>
+        {/* 세부 chip 선택 */}
+        {cat.subcats.length > 0 && (
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 10 }}>
+            {cat.subcats.map((s) => {
+              const val = s.icon ? `${s.icon} ${s.name}` : s.name;
+              const active = subcategory === val;
+              return (
+                <button
+                  key={s.name}
+                  type="button"
+                  onClick={() => setSubcategory(active ? "" : val)}
+                  style={{
+                    padding: "3px 9px", borderRadius: 999,
+                    border: `1px solid ${active ? cat.color : cat.color + "55"}`,
+                    background: active ? cat.bg : "#fff",
+                    color: active ? cat.color : "#7A6060",
+                    fontSize: 11, fontWeight: active ? 700 : 500,
+                    cursor: "pointer", fontFamily: "inherit"
+                  }}
+                >{val}</button>
+              );
+            })}
+          </div>
+        )}
 
         <input
           type="date"
