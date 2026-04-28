@@ -31,9 +31,16 @@ export default function ChangelogModal({ entries, onClose }) {
                 <div style={{ fontSize: 10, color: "#B8A9A3" }}>{e.date}</div>
               </div>
               <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#7A6060", lineHeight: 1.7 }}>
-                {(e.items || []).map((it, i) => (
-                  <li key={i} style={{ whiteSpace: "pre-line", marginBottom: 8 }}>{it}</li>
-                ))}
+                {(e.items || []).map((it, i) => {
+                  const lines = String(it).split("\n");
+                  return (
+                    <li key={i} style={{ marginBottom: 10 }}>
+                      {lines.map((line, j) => (
+                        <span key={j} style={{ display: "block" }}>{line}</span>
+                      ))}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}
