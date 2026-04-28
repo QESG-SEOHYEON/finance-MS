@@ -1,4 +1,4 @@
-import { detailedHearts } from "../../lib/mentor.js";
+import { DetailedHearts } from "./Heart.jsx";
 
 const R = {
   rose300: "#D4A0A0",
@@ -14,7 +14,6 @@ const R = {
 
 export default function AffinityModal({ mentor, onClose }) {
   const a = mentor?.affinity || 0;
-  const { full, half, empty } = detailedHearts(a);
   const isMax = a >= 10;
 
   return (
@@ -38,16 +37,9 @@ export default function AffinityModal({ mentor, onClose }) {
             {a.toFixed(1)} <span style={{ fontSize: 18, color: R.textLight, fontWeight: 500 }}>/ 10</span>
           </div>
 
-          {/* 10 하트 row */}
-          <div style={{ display: "flex", justifyContent: "center", gap: 2, marginTop: 12, fontSize: 20 }}>
-            {Array(full).fill("❤️").map((h, i) => <span key={`f${i}`}>{h}</span>)}
-            {half > 0 && (
-              <span style={{ position: "relative", display: "inline-block", width: "1em" }}>
-                <span style={{ position: "absolute", inset: 0, color: "#E5DCD8" }}>🤍</span>
-                <span style={{ position: "absolute", inset: 0, clipPath: "inset(0 50% 0 0)" }}>❤️</span>
-              </span>
-            )}
-            {Array(empty).fill("🤍").map((h, i) => <span key={`e${i}`}>{h}</span>)}
+          {/* 10 픽셀 하트 row */}
+          <div style={{ marginTop: 14 }}>
+            <DetailedHearts affinity={a} size={22} color={R.rose400} emptyColor="#E5DCD8" />
           </div>
 
           {isMax && (

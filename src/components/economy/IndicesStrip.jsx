@@ -18,6 +18,16 @@ const R = {
   down: "#4A8FC0"
 };
 
+// 지수별 브랜드 톤 — 전부 장미 파스텔 계열, 세 톤으로 구분
+const INDEX_PALETTES = {
+  "^KS11":  { bg: "#FFEDF2", border: "#F5B8CC", accent: "#D07088", tag: "KR" }, // 코스피 - 라이트 핑크 로즈
+  "^IXIC":  { bg: "#F7E8EE", border: "#DDB5C8", accent: "#A56080", tag: "US" }, // 나스닥 - 더스티 베리
+  "^GSPC":  { bg: "#FFE8DE", border: "#F0C0A8", accent: "#C87060", tag: "US" }  // S&P - 코랄 로즈
+};
+function paletteFor(symbol) {
+  return INDEX_PALETTES[symbol] || { bg: "#FAF5F3", border: "#EDE5E2", accent: "#7A6060", tag: "" };
+}
+
 function readCache() {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
@@ -84,29 +94,35 @@ export default function IndicesStrip() {
       }}>
         {indices.map((idx) => {
           const up = (idx.dayChangePct || 0) >= 0;
-          const lineColor = up ? R.up : R.down;
+          const p = paletteFor(idx.symbol);
+          // 라인 컬러: 지수 아이덴티티 accent 를 베이스로, 하락 시에만 차가운 blue 로
+          const lineColor = up ? p.accent : R.down;
           return (
             <div
               key={idx.symbol}
               style={{
-                padding: 12, borderRadius: 10, background: R.cream,
-                border: `1px solid ${R.border}`,
+                padding: 12, borderRadius: 10,
+                background: p.bg,
+                border: `1px solid ${p.border}`,
                 display: "flex", flexDirection: "column", gap: 6
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: R.textMid }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: p.accent }}>
                   {idx.short}
                 </div>
-                <div style={{ fontSize: 10, color: R.textLight }}>
-                  {idx.currency}
+                <div style={{
+                  fontSize: 9, color: "#fff", background: p.accent,
+                  padding: "1px 6px", borderRadius: 4, fontWeight: 700
+                }}>
+                  {p.tag || idx.currency}
                 </div>
               </div>
               <div style={{ fontSize: 20, fontWeight: 800, color: R.textDark, letterSpacing: -0.5 }}>
                 {fmtNum(idx.current, idx.currency)}
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: lineColor }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: up ? R.up : R.down }}>
                   {up ? "▲" : "▼"} {fmtNum(Math.abs(idx.dayChange || 0), idx.currency)}
                   <span style={{ marginLeft: 4 }}>
                     ({up ? "+" : ""}{idx.dayChangePct?.toFixed(2)}%)

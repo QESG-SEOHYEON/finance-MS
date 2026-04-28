@@ -1,3 +1,12 @@
+/* ========== Korean pixel font (bundled local) ========== */
+@font-face {
+  font-family: "Galmuri11";
+  src: url("./assets/fonts/Galmuri11.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 400;
+  font-style: normal;
+}
+
 /* ========== Rose Palette ========== */
 :root {
   --rose-50: #FFF5F5;

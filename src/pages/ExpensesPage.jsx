@@ -15,6 +15,7 @@ import {
   DEFAULT_CATEGORY_KEYS, CATEGORY_COLOR_PRESETS,
   normalizeSubcats, getSubcatIcon
 } from "../lib/expenseCategories.js";
+import { formatKorean } from "../lib/format.js";
 import { fmt, fmtWon } from "../schedule.js";
 import TopBar from "../components/TopBar.jsx";
 
@@ -33,6 +34,17 @@ const R = {
 };
 
 const BUDGET_CAP = 890000;
+
+// 금액 입력 바로 아래 작은 한글 읽는 법 표시 (예: "≈ 1만2천원")
+function KrwHint({ value }) {
+  const text = formatKorean(value);
+  if (!text) return null;
+  return (
+    <div style={{ fontSize: 10, color: "#B8A9A3", marginTop: 3, paddingLeft: 2 }}>
+      ≈ {text}
+    </div>
+  );
+}
 
 function StepBadge({ n, color = "#C08080" }) {
   return (
@@ -649,15 +661,18 @@ export default function ExpensesPage() {
                editingPreset?.kind === "custom" ? "✏️ 커스텀 프리셋 편집" :
                "+ 새 프리셋 추가"}
             </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <input
-                type="number"
-                placeholder="금액"
-                value={newPresetAmount}
-                onChange={(e) => setNewPresetAmount(e.target.value)}
-                className="modal-input"
-                style={{ width: 110, padding: "8px 10px", fontSize: 13 }}
-              />
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "flex-start" }}>
+              <div style={{ display: "flex", flexDirection: "column", width: 110 }}>
+                <input
+                  type="number"
+                  placeholder="금액"
+                  value={newPresetAmount}
+                  onChange={(e) => setNewPresetAmount(e.target.value)}
+                  className="modal-input"
+                  style={{ padding: "8px 10px", fontSize: 13 }}
+                />
+                <KrwHint value={newPresetAmount} />
+              </div>
               <input
                 type="text"
                 placeholder="세부 (자유 입력)"
@@ -720,22 +735,25 @@ export default function ExpensesPage() {
             <span style={{ color: R.textLight, fontWeight: 500 }}>· 한 번만 쓰는 지출</span>
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <input
-              type="number"
-              inputMode="numeric"
-              placeholder="금액"
-              value={customAmount}
-              onChange={(e) => setCustomAmount(e.target.value)}
-              className="modal-input"
-              style={{ width: 120, padding: "8px 10px", fontSize: 13 }}
-            />
+            <div style={{ display: "flex", flexDirection: "column", width: 120 }}>
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder="금액"
+                value={customAmount}
+                onChange={(e) => setCustomAmount(e.target.value)}
+                className="modal-input"
+                style={{ padding: "8px 10px", fontSize: 13 }}
+              />
+              <KrwHint value={customAmount} />
+            </div>
             <input
               type="text"
               placeholder={category.subcats.length > 0 ? "세부 (아래 태그 탭 or 자유 입력)" : "세부 (선택)"}
               value={customSub}
               onChange={(e) => setCustomSub(e.target.value)}
               className="modal-input"
-              style={{ width: 200, padding: "8px 10px", fontSize: 13 }}
+              style={{ width: 200, padding: "8px 10px", fontSize: 13, alignSelf: "flex-start" }}
             />
             <input
               type="text"
@@ -883,15 +901,18 @@ export default function ExpensesPage() {
                   style={{ padding: "10px 12px", fontSize: 13 }}
                 />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
-                <input
-                  type="number"
-                  placeholder="금액"
-                  value={newRec.amount}
-                  onChange={(e) => setNewRec({ ...newRec, amount: e.target.value })}
-                  className="modal-input"
-                  style={{ padding: "10px 12px", fontSize: 14, fontWeight: 600 }}
-                />
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8, alignItems: "flex-start" }}>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <input
+                    type="number"
+                    placeholder="금액"
+                    value={newRec.amount}
+                    onChange={(e) => setNewRec({ ...newRec, amount: e.target.value })}
+                    className="modal-input"
+                    style={{ padding: "10px 12px", fontSize: 14, fontWeight: 600 }}
+                  />
+                  <KrwHint value={newRec.amount} />
+                </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 4, background: "#fff", borderRadius: 10, border: `1px solid ${R.border}`, padding: "0 12px" }}>
                   <span style={{ fontSize: 12, color: R.textLight }}>매월</span>
                   <input
@@ -1113,9 +1134,10 @@ function ExpenseEditor({ expense, allCategories, onSave, onDelete, onClose }) {
           onChange={(e) => setAmount(e.target.value)}
           className="modal-input"
           placeholder="금액"
-          style={{ marginBottom: 10 }}
+          style={{ marginBottom: 2 }}
           autoFocus
         />
+        <div style={{ marginBottom: 10 }}><KrwHint value={amount} /></div>
 
         <input
           type="text"
@@ -1270,8 +1292,9 @@ function CategoryEditor({ mode, category, isDefault, onSave, onClose }) {
           value={cap}
           onChange={(e) => setCap(e.target.value)}
           placeholder="예: 440000"
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: 2 }}
         />
+        <div style={{ marginBottom: 12 }}><KrwHint value={cap} /></div>
 
         <div style={{ fontSize: 11, fontWeight: 700, color: "#7A6060", marginBottom: 6 }}>
           세부 카테고리 <span style={{ color: "#B8A9A3", fontWeight: 500 }}>· 이름과 이모지 자유 설정</span>

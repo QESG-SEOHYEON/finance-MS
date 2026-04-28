@@ -8,12 +8,23 @@ import {
 } from "../../db.js";
 import {
   loadAdvice, loadScenarios, pickExcluding,
-  applyTokens, greeting, compactHearts,
+  applyTokens, greeting,
   DAILY_ADVICE_LIMIT, ADVICE_AFFINITY
 } from "../../lib/mentor.js";
 import MentorPhoto from "./MentorPhoto.jsx";
 import AffinityModal from "./AffinityModal.jsx";
 import SettingsModal from "./SettingsModal.jsx";
+import { DetailedHearts } from "./Heart.jsx";
+import PixelButton, { PixelBubble } from "./PixelButton.jsx";
+
+// ═════════════════════════════════════════════════════════
+// [DEV] localhost(개발자 환경)에서만 일일 제한 비활성화.
+// 배포된 친구 앱(github.io 등)에서는 자동으로 false → 정상 카운팅.
+// ═════════════════════════════════════════════════════════
+const DEV_UNLIMITED =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1");
 
 const R = {
   rose300: "#D4A0A0",
@@ -55,8 +66,10 @@ export default function MentorCard({ variant = "compact" }) {
   const mentorName = mentor?.nickname?.trim() || mentor?.name?.trim() || "";
   const tokens = { user, mentor: mentorName || user };
 
-  const adviceLeft = DAILY_ADVICE_LIMIT - (daily?.adviceCount || 0);
-  const chatLeft = daily?.chatUsed ? 0 : 1;
+  const adviceLeft = DEV_UNLIMITED
+    ? DAILY_ADVICE_LIMIT // [DEV] 표시는 3회로 유지 (UI상 자연스러움)
+    : DAILY_ADVICE_LIMIT - (daily?.adviceCount || 0);
+  const chatLeft = DEV_UNLIMITED ? 1 : (daily?.chatUsed ? 0 : 1);
 
   const pushToast = (msg) => {
     setToast(msg);
@@ -71,7 +84,7 @@ export default function MentorCard({ variant = "compact" }) {
       const recent = await getRecentAdviceIds({ days: 7 });
       const picked = pickExcluding(items, recent);
       const result = await adjustAffinity(ADVICE_AFFINITY);
-      await incMentorAdvice();
+      if (!DEV_UNLIMITED) await incMentorAdvice(); // [DEV] 제한 OFF 시 카운터 스킵
       await addMentorHistory({
         type: "advice",
         refId: picked.id,
@@ -106,7 +119,7 @@ export default function MentorCard({ variant = "compact" }) {
     setBusy(true);
     try {
       const result = await adjustAffinity(choice.affinity);
-      await markMentorChatUsed();
+      if (!DEV_UNLIMITED) await markMentorChatUsed(); // [DEV] 제한 OFF 시 카운터 스킵
       await addMentorHistory({
         type: "chat",
         refId: chatScenario.id,
@@ -132,34 +145,61 @@ export default function MentorCard({ variant = "compact" }) {
     setChatScenario(null);
   };
 
-  const hearts = compactHearts(mentor?.affinity || 0);
   const affinityNum = (mentor?.affinity || 0).toFixed(1);
 
-  // 오늘 보여줄 사진 — 여러 장이면 날짜 시드로 결정
+  // 오늘 보여줄 사진 — 여러 장이면 날짜 시드로 결정. 없으면 기본 픽셀 고양이.
   const photoSrc = useMemo(() => {
-    if (!mentor?.showPhoto || !mentor?.photos?.length) return null;
+    if (!mentor?.showPhoto) return null; // OFF → 기본 일러스트 (💭)
+    if (!mentor?.photos?.length) return "./mentor-default-cat.jpeg";
     const today = new Date();
     const seed = today.getFullYear() * 1000 + today.getMonth() * 50 + today.getDate();
     const idx = seed % mentor.photos.length;
-    return mentor.photos[idx] || null;
+    return mentor.photos[idx] || "./mentor-default-cat.jpeg";
   }, [mentor?.showPhoto, mentor?.photos]);
 
-  const containerStyle = variant === "full"
-    ? { padding: 24 }
-    : { padding: 16 };
+  // CSS 레트로 윈도우 프레임 — 가로·세로 자유 스케일, 왜곡 없음.
+  const frame = variant === "full"
+    ? { photo: 160, bodyPad: "20px 24px", titleH: 26, footerH: 22, titleFont: 13 }
+    : { photo: 128, bodyPad: "14px 18px", titleH: 22, footerH: 18, titleFont: 11 };
 
   return (
-    <div className="card" style={{
-      ...containerStyle,
-      background: "linear-gradient(135deg, #FFF5F3 0%, #FFF0EC 100%)",
-      border: `1px solid ${R.rose300}`,
-      position: "relative", overflow: "hidden"
+    <div style={{
+      position: "relative",
+      borderRadius: 8,
+      overflow: "hidden",
+      background: "#fff",
+      border: "1.5px solid #C08080",
+      boxShadow: "3px 3px 0 rgba(192,128,128,0.25)"
     }}>
+      {/* 타이틀바 */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 6,
+        height: frame.titleH,
+        padding: "0 10px",
+        background: "linear-gradient(180deg, #F5A6C8 0%, #E88AB0 100%)",
+        borderBottom: "1.5px solid #C08080",
+        fontFamily: "'Galmuri11', monospace",
+        fontSize: frame.titleFont,
+        color: "#5A2840"
+      }}>
+        <WindowIcon>×</WindowIcon>
+        <WindowIcon>□</WindowIcon>
+        <WindowIcon>−</WindowIcon>
+        <span style={{ marginLeft: "auto", opacity: 0.85 }}>
+          {mentorName || "mentor"}.exe
+        </span>
+      </div>
+
+      {/* 본체 */}
+      <div style={{
+        padding: frame.bodyPad,
+        background: "linear-gradient(180deg, #FFF8FA 0%, #FFEDF3 100%)"
+      }}>
       {/* 헤더: 사진 + 인삿말 */}
-      <div style={{ display: "flex", gap: variant === "full" ? 16 : 12, alignItems: "flex-start" }}>
+      <div style={{ display: "flex", gap: variant === "full" ? 20 : 14, alignItems: "flex-start" }}>
         <MentorPhoto
           src={photoSrc}
-          size={variant === "full" ? 88 : 64}
+          size={frame.photo}
           fallbackColor={R.rose400}
         />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -169,19 +209,12 @@ export default function MentorCard({ variant = "compact" }) {
           }}>
             💬 {mentorName ? `${mentorName}` : "경제 멘토"}
           </div>
-          <div
-            style={{
-              display: "inline-block",
-              padding: variant === "full" ? "10px 14px" : "8px 12px",
-              background: "#fff",
-              border: `1px solid ${R.rose300}`,
-              borderRadius: "14px 14px 14px 4px",
-              fontSize: variant === "full" ? 14 : 13,
-              fontWeight: 600,
-              color: R.textDark,
-              lineHeight: 1.45,
-              maxWidth: "100%"
-            }}
+          <PixelBubble
+            border={R.rose400}
+            bg="#fff"
+            padding={variant === "full" ? "10px 14px" : "8px 12px"}
+            fontSize={variant === "full" ? 13 : 12}
+            color={R.textDark}
           >
             {!bubble && greeting({ user })}
             {bubble?.kind === "advice" && (
@@ -202,71 +235,101 @@ export default function MentorCard({ variant = "compact" }) {
                 onClose={closeBubble}
               />
             )}
-          </div>
+          </PixelBubble>
         </div>
       </div>
 
-      {/* 수다 선택지 (chat-q일 때) */}
+      {/* 수다 선택지 (chat-q일 때) — 픽셀 스타일 */}
       {bubble?.kind === "chat-q" && (
         <div style={{
-          marginTop: 12, display: "flex", flexDirection: "column", gap: 6
+          marginTop: 12, display: "flex", flexDirection: "column", gap: 8
         }}>
           {bubble.payload.choices.map((c, idx) => (
-            <button
+            <ChoiceButton
               key={idx}
               onClick={() => doChatChoose(c, idx)}
               disabled={busy}
-              style={{
-                padding: "10px 14px", borderRadius: 10,
-                border: `1px solid ${R.rose300}`,
-                background: "#fff", color: R.textDark,
-                fontSize: 13, fontWeight: 600, fontFamily: "inherit",
-                cursor: busy ? "wait" : "pointer",
-                textAlign: "left", transition: "all 0.15s"
-              }}
-              onMouseEnter={(e) => { if (!busy) e.currentTarget.style.background = R.cream; }}
-              onMouseLeave={(e) => e.currentTarget.style.background = "#fff"}
             >
               {applyTokens(c.text, tokens)}
-            </button>
+            </ChoiceButton>
           ))}
         </div>
       )}
 
-      {/* 버튼 행 */}
+      {/* 버블 있을 때 — 뒤로가기 픽셀 버튼 */}
+      {bubble && (
+        <div style={{
+          marginTop: variant === "full" ? 14 : 10,
+          display: "flex", justifyContent: "flex-end"
+        }}>
+          <PixelButton
+            palette="cream"
+            size="sm"
+            onClick={closeBubble}
+            title="뒤로"
+          >← 뒤로</PixelButton>
+        </div>
+      )}
+
+      {/* 호감도 + 버튼을 한 줄로 병렬 배치 */}
       {!bubble && (
         <div style={{
           marginTop: variant === "full" ? 16 : 12,
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr auto auto",
-          gap: 6, alignItems: "stretch"
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          flexWrap: "wrap"
         }}>
-          <ActionButton
-            icon="💡"
-            label="조언 듣기"
-            sub={adviceLeft > 0 ? `오늘 ${adviceLeft}회 남음` : "내일 다시 와"}
+          <button
+            onClick={() => setShowAffinity(true)}
+            title="탭하여 호감도 상세 보기"
+            style={{
+              flex: "1 1 280px",
+              minWidth: 0,
+              padding: variant === "full" ? "12px 16px" : "10px 12px",
+              borderRadius: 10,
+              background: "rgba(255,255,255,0.85)",
+              border: `1.5px solid ${R.rose300}`,
+              cursor: "pointer", fontFamily: "inherit",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              gap: 10, transition: "all 0.15s"
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#FFF5F3"; e.currentTarget.style.borderColor = R.rose400; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.85)"; e.currentTarget.style.borderColor = R.rose300; }}
+          >
+            <DetailedHearts
+              affinity={mentor?.affinity || 0}
+              size={variant === "full" ? 22 : 18}
+            />
+            <span style={{
+              fontSize: variant === "full" ? 15 : 13,
+              fontWeight: 800, color: R.rose500, letterSpacing: -0.5,
+              flexShrink: 0, fontFamily: "'Galmuri11', monospace"
+            }}>
+              {affinityNum}
+              <span style={{ fontSize: 11, color: R.textLight, fontWeight: 500, marginLeft: 2 }}>/10</span>
+            </span>
+          </button>
+          <PixelButton
+            palette="pink"
+            size="sm"
             disabled={adviceLeft <= 0 || busy}
             onClick={doAdvice}
-            color={R.rose400}
-          />
-          <ActionButton
-            icon="💬"
-            label="수다 떨기"
-            sub={chatLeft > 0 ? "오늘 1회 남음" : "오늘은 끝"}
+            title={adviceLeft > 0 ? `조언 듣기 (${adviceLeft}회 남음)` : "내일 다시 와"}
+          >💡 조언</PixelButton>
+          <PixelButton
+            palette="mint"
+            size="sm"
             disabled={chatLeft <= 0 || busy}
             onClick={doChatStart}
-            color={R.mint}
-          />
-          <IconBtn
-            title={`호감도 ${affinityNum}/10`}
-            onClick={() => setShowAffinity(true)}
-          >
-            <span style={{ fontSize: 14, letterSpacing: -1 }}>{hearts}</span>
-            <span style={{ fontSize: 9, color: R.textMid, fontWeight: 700 }}>{affinityNum}</span>
-          </IconBtn>
-          <IconBtn title="설정" onClick={() => setShowSettings(true)}>
-            <span style={{ fontSize: 14 }}>⚙️</span>
-          </IconBtn>
+            title={chatLeft > 0 ? "수다 떨기 (1회 남음)" : "오늘은 끝"}
+          >💬 수다</PixelButton>
+          <PixelButton
+            palette="cream"
+            size="sm"
+            onClick={() => setShowSettings(true)}
+            title="설정"
+          >⚙ 설정</PixelButton>
         </div>
       )}
 
@@ -310,7 +373,102 @@ export default function MentorCard({ variant = "compact" }) {
       {showSettings && (
         <SettingsModal mentor={mentor} tokens={tokens} onClose={() => setShowSettings(false)} />
       )}
+      </div>{/* /body */}
+
+      {/* 푸터 — 장식용 < > 네비 (호감도 모달 단축키 역할) */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        height: frame.footerH,
+        padding: "0 12px",
+        background: "linear-gradient(180deg, #FFE0ED 0%, #F5A6C8 100%)",
+        borderTop: "1.5px solid #C08080",
+        fontFamily: "'Galmuri11', monospace",
+        color: "#5A2840", fontSize: 12
+      }}>
+        <span>‹</span>
+        <span style={{ fontSize: 10, opacity: 0.7 }}>
+          호감도 {(mentor?.affinity || 0).toFixed(1)}/10
+        </span>
+        <span>›</span>
+      </div>
     </div>
+  );
+}
+
+// 3지선다 선택지 버튼 — 픽셀 스타일, 여러 줄 가능, 왼쪽 정렬
+function ChoiceButton({ children, onClick, disabled }) {
+  const STEP = 3;
+  const clip = `polygon(
+    0 ${STEP}px, ${STEP}px ${STEP}px, ${STEP}px 0,
+    calc(100% - ${STEP}px) 0, calc(100% - ${STEP}px) ${STEP}px, 100% ${STEP}px,
+    100% calc(100% - ${STEP}px), calc(100% - ${STEP}px) calc(100% - ${STEP}px), calc(100% - ${STEP}px) 100%,
+    ${STEP}px 100%, ${STEP}px calc(100% - ${STEP}px), 0 calc(100% - ${STEP}px)
+  )`;
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        position: "relative",
+        width: "100%",
+        padding: 0,
+        background: "transparent",
+        border: "none",
+        cursor: disabled ? "wait" : "pointer",
+        fontFamily: "inherit",
+        opacity: disabled ? 0.55 : 1,
+        textAlign: "left"
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          e.currentTarget.querySelector(".ch-inner").style.background = "#FFF5F3";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!disabled) {
+          e.currentTarget.querySelector(".ch-inner").style.background = "#fff";
+        }
+      }}
+    >
+      <span style={{
+        position: "absolute", inset: 0, background: "#D4A0A0",
+        clipPath: clip, WebkitClipPath: clip
+      }} />
+      <span className="ch-inner" style={{
+        position: "absolute", inset: STEP, background: "#fff",
+        clipPath: `polygon(
+          0 ${STEP - 1}px, ${STEP - 1}px ${STEP - 1}px, ${STEP - 1}px 0,
+          calc(100% - ${STEP - 1}px) 0, calc(100% - ${STEP - 1}px) ${STEP - 1}px, 100% ${STEP - 1}px,
+          100% calc(100% - ${STEP - 1}px), calc(100% - ${STEP - 1}px) calc(100% - ${STEP - 1}px), calc(100% - ${STEP - 1}px) 100%,
+          ${STEP - 1}px 100%, ${STEP - 1}px calc(100% - ${STEP - 1}px), 0 calc(100% - ${STEP - 1}px)
+        )`,
+        transition: "background 0.15s"
+      }} />
+      <span style={{
+        position: "relative", zIndex: 1, display: "block",
+        padding: "10px 14px",
+        fontFamily: "'Galmuri11', 'Press Start 2P', monospace",
+        fontSize: 13,
+        color: "#4A3535",
+        lineHeight: 1.5,
+        letterSpacing: "0.3px",
+        textAlign: "left"
+      }}>{children}</span>
+    </button>
+  );
+}
+
+function WindowIcon({ children }) {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      width: 14, height: 14,
+      background: "rgba(255,255,255,0.8)",
+      border: "1px solid #5A2840",
+      color: "#5A2840",
+      fontSize: 10, fontWeight: 800, lineHeight: 1,
+      fontFamily: "'Galmuri11', monospace"
+    }}>{children}</span>
   );
 }
 
@@ -383,13 +541,14 @@ function ChatReplyBubble({ scenario, choice, applied, tokens, onClose }) {
   const color = applied > 0 ? "#6BAF8D" : applied < 0 ? "#C06060" : "#B8A9A3";
   return (
     <div style={{ cursor: "pointer" }} onClick={onClose} title="탭하면 닫혀">
-      <div style={{ fontSize: 12, color: "#B8A9A3", marginBottom: 4, fontStyle: "italic" }}>
-        "{applyTokens(choice.text, tokens)}"
+      {/* 내 대답 (플레이어 선택) — 엷은 색 */}
+      <div style={{ fontSize: 11, color: "#B8A9A3", marginBottom: 6 }}>
+        &gt; {applyTokens(choice.text, tokens)}
       </div>
-      <div style={{ fontSize: 13, lineHeight: 1.5, color: "#4A3535" }}>
+      <div style={{ lineHeight: 1.5, color: "#4A3535" }}>
         {applyTokens(choice.reply, tokens)}
       </div>
-      <div style={{ fontSize: 10, color, marginTop: 6, fontWeight: 700 }}>
+      <div style={{ fontSize: 11, color, marginTop: 6, fontWeight: 700 }}>
         호감도 {applied >= 0 ? "+" : ""}{applied.toFixed(2)}
       </div>
     </div>
