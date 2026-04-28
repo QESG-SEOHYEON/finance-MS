@@ -32,7 +32,7 @@ export default function ChangelogModal({ entries, onClose }) {
               </div>
               <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#7A6060", lineHeight: 1.7 }}>
                 {(e.items || []).map((it, i) => (
-                  <li key={i}>{it}</li>
+                  <li key={i} style={{ whiteSpace: "pre-line", marginBottom: 8 }}>{it}</li>
                 ))}
               </ul>
             </div>
