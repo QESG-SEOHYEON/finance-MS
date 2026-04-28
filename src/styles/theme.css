@@ -1,0 +1,30 @@
+/* ========== Theme tokens (서현/GH/MS — 이 파일을 각 repo에서 따로 손봐도 OK) ========== */
+
+/* Korean pixel font (bundled local) */
+@font-face {
+  font-family: "Galmuri11";
+  src: url("../assets/fonts/Galmuri11.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* Rose Palette */
+:root {
+  --rose-50: #FFF5F5;
+  --rose-100: #FCEAEA;
+  --rose-200: #F0D5D5;
+  --rose-300: #D4A0A0;
+  --rose-400: #C08080;
+  --rose-500: #A66060;
+  --rose-600: #8B4F4F;
+  --rose-700: #6B3A3A;
+  --cream: #FAF5F3;
+  --cream-dark: #F0EBE8;
+  --warm-gray: #B8A9A3;
+  --warm-gray-light: #D4CCC9;
+  --text-dark: #4A3535;
+  --text-mid: #7A6060;
+  --text-light: #B8A9A3;
+  --border: #EDE5E2;
+}
