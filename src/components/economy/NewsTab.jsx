@@ -45,7 +45,14 @@ function relativeTime(iso) {
 
 function dateKey(iso) {
   if (!iso) return "unknown";
-  return iso.slice(0, 10); // YYYY-MM-DD (UTC 기준이지만 KST 하루 차이 미미)
+  // KST 기준으로 YYYY-MM-DD 산출 (UTC+9). UTC 자정 직후라도 한국 날짜로 묶임.
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "unknown";
+  return new Date(t + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+function todayKeyKST() {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
 function dateLabel(key) {
@@ -86,7 +93,7 @@ export default function NewsTab() {
   useEffect(() => { load(); }, []);
 
   const items = state.data?.items || [];
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayKey = todayKeyKST();
 
   const filtered = useMemo(() => {
     return items.filter((it) => {
