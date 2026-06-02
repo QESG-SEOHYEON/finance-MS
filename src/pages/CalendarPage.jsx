@@ -1,12 +1,13 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
-  db,
+  db, DEBT_TOTAL, DEBT_MONTHLY,
   getMonthStatus, setMonthStatus, setActualAmount,
   getView, setView, calcDebtPaidBefore, getExpensesForMonth,
   getMonthSchedule, setMonthSchedule,
-  getUserProfile
+  getAttendanceDates
 } from "../db.js";
+import { calendarDateKey } from "../lib/attendance.js";
 import { COLORS, fmt, fmtWon, getDaysInMonth, getTasksForMonth } from "../schedule.js";
 import { aggregateMonth } from "../lib/aggregate.js";
 import TopBar from "../components/TopBar.jsx";
@@ -28,15 +29,16 @@ export default function CalendarPage() {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [filter, setFilter] = useState("all");
-  const [editTask, setEditTask] = useState(null); // { task, mode }
   const [showBulkDebt, setShowBulkDebt] = useState(false);
+  const [editTask, setEditTask] = useState(null); // { task, mode }
   const [bootLoaded, setBootLoaded] = useState(false);
 
   const allMonthly = useLiveQuery(() => db.monthly_status.toArray(), [], []);
   const monthRow = useLiveQuery(() => getMonthStatus(year, month), [year, month], null);
+  const attendanceDates = useLiveQuery(() => getAttendanceDates(), [], []);
+  const attendanceSet = useMemo(() => new Set(attendanceDates), [attendanceDates]);
   const expenses = useLiveQuery(() => getExpensesForMonth(year, month), [year, month], []);
   const scheduleRow = useLiveQuery(() => getMonthSchedule(year, month), [year, month], null);
-  const dbProfile = useLiveQuery(() => getUserProfile(), [], null);
 
   useEffect(() => {
     (async () => {
@@ -49,16 +51,12 @@ export default function CalendarPage() {
   const checks = monthRow?.checks || {};
   const actuals = monthRow?.actualAmounts || {};
   const debtPaidBefore = useMemo(
-    () => calcDebtPaidBefore(allMonthly || [], dbProfile, year, month),
-    [allMonthly, dbProfile, year, month]
+    () => calcDebtPaidBefore(allMonthly || [], year, month),
+    [allMonthly, year, month]
   );
   const tasks = useMemo(
-    () => getTasksForMonth(year, month, {
-      profile: dbProfile,
-      customSchedule: scheduleRow || undefined,
-      debtPaidBefore
-    }),
-    [year, month, dbProfile, debtPaidBefore, scheduleRow]
+    () => getTasksForMonth(year, month, debtPaidBefore, scheduleRow || undefined),
+    [year, month, debtPaidBefore, scheduleRow]
   );
   const filteredTasks = filter === "all" ? tasks : tasks.filter((t) => t.type === filter);
 
@@ -280,6 +278,32 @@ export default function CalendarPage() {
               <div className={`cal-day-num ${dow === 0 ? "sun" : dow === 6 ? "sat" : ""}`}>
                 {day}
               </div>
+              {attendanceSet.has(calendarDateKey(year, month, day)) && (
+                <svg
+                  aria-hidden
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="xMidYMid meet"
+                  style={{
+                    position: "absolute",
+                    right: 2, bottom: 2,
+                    width: "70%", height: "70%",
+                    opacity: 0.4,
+                    transform: "rotate(-12deg)",
+                    pointerEvents: "none",
+                    userSelect: "none"
+                  }}
+                >
+                  <g fill="#F8C8D4">
+                    {/* 메인 발바닥 패드 (키움) */}
+                    <ellipse cx="50" cy="68" rx="30" ry="24" />
+                    {/* 4개의 발가락 패드 */}
+                    <ellipse cx="20" cy="40" rx="9"  ry="11" />
+                    <ellipse cx="40" cy="22" rx="9"  ry="11" />
+                    <ellipse cx="64" cy="22" rx="9"  ry="11" />
+                    <ellipse cx="84" cy="40" rx="9"  ry="11" />
+                  </g>
+                </svg>
+              )}
               {items.map((t) => {
                 const isChecked = !!checks[t.id];
                 const c = COLORS[t.type];
