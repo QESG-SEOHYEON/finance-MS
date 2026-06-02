@@ -31,9 +31,12 @@ export default function Sidebar({ page, onNavigate, onOpenProfileEdit }) {
     [phase.num]
   );
   const c = customGoals?.value || { added: [], hidden: [] };
+  const goalsArr = Array.isArray(phase?.goals) ? phase.goals : [];
+  const hiddenArr = Array.isArray(c.hidden) ? c.hidden : [];
+  const addedArr = Array.isArray(c.added) ? c.added : [];
   const visibleGoals = [
-    ...phase.goals.filter((g) => !c.hidden.includes(g)),
-    ...c.added
+    ...goalsArr.filter((g) => !hiddenArr.includes(g)),
+    ...addedArr
   ];
 
   return (

@@ -270,9 +270,12 @@ function buildYearlyData(attendanceDates, year) {
 // ───────────────────────────── Main ─────────────────────────────
 export default function AttendanceStrip({ attendanceDates, today, year, month }) {
   const [mode, setMode] = useState("week");
+  // useLiveQuery 일시 undefined 가드
+  const safeDates = Array.isArray(attendanceDates) ? attendanceDates : [];
+  const safeToday = today instanceof Date ? today : new Date();
 
-  const attendanceSet = useMemo(() => new Set(attendanceDates), [attendanceDates]);
-  const isViewingCurrent = year === today.getFullYear() && month === today.getMonth() + 1;
+  const attendanceSet = useMemo(() => new Set(safeDates), [safeDates]);
+  const isViewingCurrent = year === safeToday.getFullYear() && month === safeToday.getMonth() + 1;
   const todayDay = isViewingCurrent ? today.getDate() : null;
   const daysInMonth = useMemo(() => new Date(year, month, 0).getDate(), [year, month]);
   const firstDow = useMemo(() => new Date(year, month - 1, 1).getDay(), [year, month]);
@@ -335,7 +338,7 @@ export default function AttendanceStrip({ attendanceDates, today, year, month })
 
   const thisMonthCount = daily.filter((d) => d.attended).length;
 
-  const yearlyData = useMemo(() => buildYearlyData(attendanceDates, year), [attendanceDates, year]);
+  const yearlyData = useMemo(() => buildYearlyData(safeDates, year), [safeDates, year]);
   const yearlyTotal = yearlyData.reduce((s, m) => s + m.count, 0);
 
   return (
@@ -343,7 +346,7 @@ export default function AttendanceStrip({ attendanceDates, today, year, month })
       <div className="section-title" style={{ marginBottom: 4 }}>
         🐾 출석 도장
         <span className="section-meta">
-          이번 달 {thisMonthCount}/{daysInMonth}일 · 누적 {attendanceDates.length}일
+          이번 달 {thisMonthCount}/{daysInMonth}일 · 누적 {safeDates.length}일
         </span>
       </div>
 
