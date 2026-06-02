@@ -1,10 +1,11 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
-  db, DEBT_TOTAL, DEBT_MONTHLY,
+  db,
   getMonthStatus, setMonthStatus, setActualAmount,
   getView, setView, calcDebtPaidBefore, getExpensesForMonth,
   getMonthSchedule, setMonthSchedule,
+  getUserProfile,
   getAttendanceDates
 } from "../db.js";
 import { calendarDateKey } from "../lib/attendance.js";
@@ -29,16 +30,17 @@ export default function CalendarPage() {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [filter, setFilter] = useState("all");
-  const [showBulkDebt, setShowBulkDebt] = useState(false);
   const [editTask, setEditTask] = useState(null); // { task, mode }
+  const [showBulkDebt, setShowBulkDebt] = useState(false);
   const [bootLoaded, setBootLoaded] = useState(false);
 
   const allMonthly = useLiveQuery(() => db.monthly_status.toArray(), [], []);
   const monthRow = useLiveQuery(() => getMonthStatus(year, month), [year, month], null);
-  const attendanceDates = useLiveQuery(() => getAttendanceDates(), [], []);
-  const attendanceSet = useMemo(() => new Set(attendanceDates), [attendanceDates]);
   const expenses = useLiveQuery(() => getExpensesForMonth(year, month), [year, month], []);
   const scheduleRow = useLiveQuery(() => getMonthSchedule(year, month), [year, month], null);
+  const dbProfile = useLiveQuery(() => getUserProfile(), [], null);
+  const attendanceDates = useLiveQuery(() => getAttendanceDates(), [], []);
+  const attendanceSet = useMemo(() => new Set(attendanceDates), [attendanceDates]);
 
   useEffect(() => {
     (async () => {
@@ -51,12 +53,16 @@ export default function CalendarPage() {
   const checks = monthRow?.checks || {};
   const actuals = monthRow?.actualAmounts || {};
   const debtPaidBefore = useMemo(
-    () => calcDebtPaidBefore(allMonthly || [], year, month),
-    [allMonthly, year, month]
+    () => calcDebtPaidBefore(allMonthly || [], dbProfile, year, month),
+    [allMonthly, dbProfile, year, month]
   );
   const tasks = useMemo(
-    () => getTasksForMonth(year, month, debtPaidBefore, scheduleRow || undefined),
-    [year, month, debtPaidBefore, scheduleRow]
+    () => getTasksForMonth(year, month, {
+      profile: dbProfile,
+      customSchedule: scheduleRow || undefined,
+      debtPaidBefore
+    }),
+    [year, month, dbProfile, debtPaidBefore, scheduleRow]
   );
   const filteredTasks = filter === "all" ? tasks : tasks.filter((t) => t.type === filter);
 
@@ -294,9 +300,7 @@ export default function CalendarPage() {
                   }}
                 >
                   <g fill="#F8C8D4">
-                    {/* 메인 발바닥 패드 (키움) */}
                     <ellipse cx="50" cy="68" rx="30" ry="24" />
-                    {/* 4개의 발가락 패드 */}
                     <ellipse cx="20" cy="40" rx="9"  ry="11" />
                     <ellipse cx="40" cy="22" rx="9"  ry="11" />
                     <ellipse cx="64" cy="22" rx="9"  ry="11" />

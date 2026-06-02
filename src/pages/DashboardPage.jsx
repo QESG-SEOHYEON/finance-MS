@@ -1,25 +1,24 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
-  db, DEBT_TOTAL, PROFILE,
+  db, PROFILE,
   getMonthStatus, getNetWorth, setNetWorth,
   calcDebtPaidBefore, getExpensesForMonth,
   getCustomGoals, setCustomGoals,
   getCustomCheckpoints, setCustomCheckpoints,
   getMonthSchedule,
-  getCashBalance, setCashBalance,
   getUserProfile, mergeProfile,
   getAttendanceDates
 } from "../db.js";
+import AttendanceStrip from "../components/AttendanceStrip.jsx";
 import { fmt, fmtWon, getTasksForMonth } from "../schedule.js";
 import { currentPhaseFrom, getUserPhases } from "../lib/phase.js";
 import { checkpointsForMonth } from "../lib/annual.js";
 import { detectRisks } from "../lib/risks.js";
 import { EXPENSE_CATEGORIES, mergeCategories } from "../lib/expenseCategories.js";
-import { aggregateRange } from "../lib/aggregate.js";
+import { aggregateRange, aggregateWeeklyRange } from "../lib/aggregate.js";
 import TopBar from "../components/TopBar.jsx";
 import MentorCard from "../components/mentor/MentorCard.jsx";
-import AttendanceStrip from "../components/AttendanceStrip.jsx";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend
@@ -58,48 +57,84 @@ export default function DashboardPage() {
   const [editNW, setEditNW] = useState(false);
   const [nwDraft, setNwDraft] = useState("");
 
-  // 여윳자금 (즉시 인출 가능 현금) — 월별 독립, 과거 월로 이동 가능
-  const [cashY, setCashY] = useState(year);
-  const [cashM, setCashM] = useState(month);
-  const cashSel = useLiveQuery(() => getCashBalance(cashY, cashM), [cashY, cashM], null);
-  const cashSelPrev = useLiveQuery(() => {
-    const pm = cashM === 1 ? 12 : cashM - 1;
-    const py = cashM === 1 ? cashY - 1 : cashY;
-    return getCashBalance(py, pm);
-  }, [cashY, cashM], null);
-  const [editCash, setEditCash] = useState(false);
-  const [cashDraft, setCashDraft] = useState("");
-  const shiftCashMonth = (dir) => {
-    setEditCash(false);
-    let nm = cashM + dir, ny = cashY;
-    if (nm > 12) { nm = 1; ny++; }
-    if (nm < 1) { nm = 12; ny--; }
-    setCashM(nm); setCashY(ny);
-  };
-  const isCashCurrentMonth = cashY === year && cashM === month;
-
   // Chart range
-  const [chartFrom, setChartFrom] = useState(`${year}-01`);
-  const [chartTo, setChartTo] = useState(`${year}-12`);
+  const [chartMode, setChartMode] = useState("month"); // "month" | "week"
+  const [chartFromMonth, setChartFromMonth] = useState(`${year}-01`);
+  const [chartToMonth, setChartToMonth] = useState(`${year}-12`);
+  const defaultFromDate = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - 56); // 8주 전
+    return d.toISOString().slice(0, 10);
+  }, [today]);
+  const defaultToDate = useMemo(() => today.toISOString().slice(0, 10), [today]);
+  const [chartFromDate, setChartFromDate] = useState(defaultFromDate);
+  const [chartToDate, setChartToDate] = useState(defaultToDate);
   const [chartData, setChartData] = useState([]);
+  const [yMin, setYMin] = useState("");
+  const [yMax, setYMax] = useState("");
 
   useEffect(() => {
     (async () => {
       const v = await getNetWorth();
-      setNW(v);
+      if (v != null) setNW(v);
     })();
   }, []);
 
-  // Chart data reload when range or DB changes
+  useEffect(() => {
+    // 온보딩 완료 후 프로필이 처음 로드되면 초기 순자산으로 세팅
+    if (dbProfile && dbProfile.currentNetWorth != null) {
+      getNetWorth().then((v) => {
+        if (v == null || v === 0) setNW(dbProfile.currentNetWorth);
+      });
+    }
+  }, [dbProfile?.currentNetWorth]);
+
+  // Chart data reload when range or ANY relevant DB changes
   const allMonthlyForChart = useLiveQuery(() => db.monthly_status.toArray(), []);
   const allExpensesForChart = useLiveQuery(() => db.expenses.toArray(), []);
+  const allSchedulesForChart = useLiveQuery(() => db.month_schedule.toArray(), []);
+  const allSettingsForChart = useLiveQuery(() => db.settings.toArray(), []);
   useEffect(() => {
-    if (allMonthlyForChart === undefined || allExpensesForChart === undefined) return;
-    const [fy, fm] = chartFrom.split("-").map(Number);
-    const [ty, tm] = chartTo.split("-").map(Number);
+    if (
+      allMonthlyForChart === undefined ||
+      allExpensesForChart === undefined ||
+      allSchedulesForChart === undefined ||
+      allSettingsForChart === undefined
+    ) return;
+    let fy, fm, ty, tm;
+    if (chartMode === "week") {
+      const from = new Date(chartFromDate);
+      const to = new Date(chartToDate);
+      if (isNaN(from.getTime()) || isNaN(to.getTime())) return;
+      fy = from.getFullYear(); fm = from.getMonth() + 1;
+      ty = to.getFullYear(); tm = to.getMonth() + 1;
+    } else {
+      const fromParts = chartFromMonth.split("-").map(Number);
+      const toParts = chartToMonth.split("-").map(Number);
+      fy = fromParts[0]; fm = fromParts[1];
+      ty = toParts[0]; tm = toParts[1];
+    }
     if (!fy || !fm || !ty || !tm) return;
-    aggregateRange(fy, fm, ty, tm).then(setChartData);
-  }, [chartFrom, chartTo, allMonthlyForChart, allExpensesForChart]);
+    const fn = chartMode === "week" ? aggregateWeeklyRange : aggregateRange;
+    fn(fy, fm, ty, tm).then((data) => {
+      // week 모드: 선택 날짜 범위와 겹치는 주만 필터링
+      if (chartMode === "week" && data[0]?.start) {
+        const from = new Date(chartFromDate);
+        const to = new Date(chartToDate);
+        setChartData(data.filter((w) => {
+          const wEnd = new Date(w.start);
+          wEnd.setDate(wEnd.getDate() + 6);
+          return wEnd >= from && w.start <= to;
+        }));
+      } else {
+        setChartData(data);
+      }
+    });
+  }, [
+    chartFromMonth, chartToMonth, chartFromDate, chartToDate, chartMode,
+    allMonthlyForChart, allExpensesForChart,
+    allSchedulesForChart, allSettingsForChart
+  ]);
 
   const allMonthly = useLiveQuery(() => db.monthly_status.toArray(), [], []);
   const monthRow = useLiveQuery(() => getMonthStatus(year, month), [year, month], null);
@@ -133,51 +168,49 @@ export default function DashboardPage() {
   };
 
   const debtPaidBefore = useMemo(
-    () => calcDebtPaidBefore(allMonthly || [], year, month),
-    [allMonthly, year, month]
+    () => calcDebtPaidBefore(allMonthly || [], dbProfile, year, month),
+    [allMonthly, dbProfile, year, month]
   );
   const tasks = useMemo(
-    () => getTasksForMonth(year, month, debtPaidBefore, scheduleRow || undefined),
-    [year, month, debtPaidBefore, scheduleRow]
+    () => getTasksForMonth(year, month, {
+      profile: dbProfile,
+      customSchedule: scheduleRow || undefined,
+      debtPaidBefore
+    }),
+    [year, month, dbProfile, debtPaidBefore, scheduleRow]
   );
   const checks = monthRow?.checks || {};
   const actuals = monthRow?.actualAmounts || {};
 
-  const debtPaidThisMonth = tasks.filter((t) => t.type === "debt" && checks[t.id]).length * 160000;
-  const debtPaidTotal = Math.min(DEBT_TOTAL, debtPaidBefore + debtPaidThisMonth);
-  const debtRemaining = Math.max(0, DEBT_TOTAL - debtPaidTotal);
+  // 부채 총액 / 이번 달 상환
+  const debtTotal = (dbProfile?.debtItems || []).reduce((s, d) => s + (Number(d.total) || 0), 0);
+  const debtPaidBeforeSum = Object.values(debtPaidBefore || {}).reduce((a, b) => a + b, 0);
+  const debtPaidThisMonth = tasks
+    .filter((t) => t.type === "debt" && checks[t.id])
+    .reduce((s, t) => s + Math.abs(t.amount), 0);
+  const debtPaidTotal = Math.min(debtTotal, debtPaidBeforeSum + debtPaidThisMonth);
+  const debtRemaining = Math.max(0, debtTotal - debtPaidTotal);
 
   const userPhases = useLiveQuery(() => getUserPhases(), [], []);
   const phase = currentPhaseFrom(userPhases, today);
   const defaultCheckpoints = checkpointsForMonth(month);
-
-  // 출석 통계는 AttendanceStrip 컴포넌트가 내부에서 처리.
 
   // Editable phase goals
   const [phaseCustom, setPhaseCustom] = useState({ added: [], hidden: [] });
   const [newGoal, setNewGoal] = useState("");
   const [showGoalInput, setShowGoalInput] = useState(false);
 
-  // Editable checkpoints — { added: [], hidden: [titles], overrides: { [defaultTitle]: { title, detail } } }
-  const [cpState, setCpState] = useState({ added: [], hidden: [], overrides: {} });
+  // Editable checkpoints
+  const [customCPs, setCustomCPs] = useState([]);
   const [newCPTitle, setNewCPTitle] = useState("");
   const [showCPInput, setShowCPInput] = useState(false);
-  const [editingCP, setEditingCP] = useState(null); // { cp, title, detail } | null
 
   useEffect(() => {
     getCustomGoals(phase.num).then(setPhaseCustom);
   }, [phase.num]);
 
   useEffect(() => {
-    getCustomCheckpoints(year, month).then((raw) => {
-      // backward compat: 이전엔 array로 저장됐었음
-      if (Array.isArray(raw)) setCpState({ added: raw, hidden: [], overrides: {} });
-      else setCpState({
-        added: raw?.added || [],
-        hidden: raw?.hidden || [],
-        overrides: raw?.overrides || {}
-      });
-    });
+    getCustomCheckpoints(year, month).then(setCustomCPs);
   }, [year, month]);
 
   const visibleGoals = [
@@ -185,19 +218,7 @@ export default function DashboardPage() {
     ...phaseCustom.added
   ];
 
-  // 기본 체크포인트는 hidden 제외 + override 적용. 사용자가 추가한 건 그대로 뒤에.
-  const visibleDefaults = defaultCheckpoints
-    .filter((c) => !cpState.hidden.includes(c.title))
-    .map((c) => {
-      const ov = cpState.overrides[c.title];
-      return ov
-        ? { ...c, icon: ov.icon ?? c.icon, title: ov.title ?? c.title, detail: ov.detail ?? c.detail }
-        : c;
-    });
-  const allCheckpoints = [
-    ...visibleDefaults.map((c) => ({ ...c, _kind: "default", _key: c.title })),
-    ...cpState.added.map((c, i) => ({ ...c, _kind: "added", _key: `added-${i}`, isCustom: true }))
-  ];
+  const allCheckpoints = [...defaultCheckpoints, ...customCPs];
 
   const addGoal = async () => {
     if (!newGoal.trim()) return;
@@ -220,63 +241,22 @@ export default function DashboardPage() {
     await setCustomGoals(phase.num, next);
   };
 
-  const saveCPs = async (next) => {
-    setCpState(next);
-    await setCustomCheckpoints(year, month, next);
-  };
-
   const addCheckpoint = async () => {
     if (!newCPTitle.trim()) return;
-    const next = {
-      ...cpState,
-      added: [...cpState.added, { icon: "📌", title: newCPTitle.trim(), detail: "" }]
-    };
-    await saveCPs(next);
+    const next = [...customCPs, { icon: "📌", title: newCPTitle.trim(), detail: "", isCustom: true }];
+    setCustomCPs(next);
+    await setCustomCheckpoints(year, month, next);
     setNewCPTitle("");
     setShowCPInput(false);
   };
 
-  const removeCheckpoint = async (cp) => {
-    if (cp._kind === "default") {
-      // 기본 항목: hidden 목록에 추가 (overrides도 같이 정리)
-      const overrides = { ...cpState.overrides };
-      delete overrides[cp._key];
-      await saveCPs({ ...cpState, hidden: [...cpState.hidden, cp._key], overrides });
-    } else {
-      // 사용자 추가 항목: added 배열에서 제거
-      const i = Number(String(cp._key).replace("added-", ""));
-      const added = cpState.added.filter((_, j) => j !== i);
-      await saveCPs({ ...cpState, added });
-    }
-  };
-
-  const editCheckpoint = (cp) => {
-    setEditingCP({ cp, icon: cp.icon || "📌", title: cp.title, detail: cp.detail || "" });
-  };
-
-  const saveCPEdit = async () => {
-    if (!editingCP) return;
-    const trimmedTitle = editingCP.title.trim();
-    if (!trimmedTitle) return;
-    const detail = editingCP.detail.trim();
-    const icon = (editingCP.icon || "").trim() || "📌";
-    const cp = editingCP.cp;
-
-    if (cp._kind === "default") {
-      const overrides = { ...cpState.overrides, [cp._key]: { icon, title: trimmedTitle, detail } };
-      await saveCPs({ ...cpState, overrides });
-    } else {
-      const i = Number(String(cp._key).replace("added-", ""));
-      const added = cpState.added.map((c, j) =>
-        j === i ? { ...c, icon, title: trimmedTitle, detail } : c
-      );
-      await saveCPs({ ...cpState, added });
-    }
-    setEditingCP(null);
-  };
-
-  const resetDefaultCheckpoints = async () => {
-    await saveCPs({ ...cpState, hidden: [], overrides: {} });
+  const removeCheckpoint = async (idx) => {
+    const customStart = defaultCheckpoints.length;
+    const customIdx = idx - customStart;
+    if (customIdx < 0) return;
+    const next = customCPs.filter((_, i) => i !== customIdx);
+    setCustomCPs(next);
+    await setCustomCheckpoints(year, month, next);
   };
 
   const goalDate = new Date(profile.goalDate);
@@ -296,13 +276,12 @@ export default function DashboardPage() {
       const raw = e.category;
       const cat = raw === "social" ? "leisure" : raw === "transit" ? "other" : raw;
       if (knownKeys.has(cat)) sums[cat] += e.amount;
-      else sums.other = (sums.other || 0) + e.amount; // 고아 키는 기타지출로 합산
+      else sums.other = (sums.other || 0) + e.amount;
       sums.total += e.amount;
     }
     return sums;
   }, [expenses, allCategories]);
 
-  // 변동지출 StatCard sub 에 상위 3개 카테고리 표시
   const topCategoriesText = useMemo(() => {
     const entries = allCategories
       .map((c) => ({ c, amt: expenseSums[c.key] || 0 }))
@@ -339,8 +318,11 @@ export default function DashboardPage() {
     <>
       <TopBar
         breadcrumb={["Finance", "Dashboard"]}
-        title={profile.dashboardTitle || `${profile.name}의 메소창고`}
-        subtitle={`오늘 ${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")} · 29세 순자산 1억 목표`}
+        title={profile.dashboardTitle || `${profile.name}의 자산관리앱`}
+        subtitle={
+          profile.dashboardSubtitle ||
+          `오늘 ${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")}${profile.goalAmount ? ` · 목표 ${fmt(profile.goalAmount)}` : ""}`
+        }
       />
 
       {/* Risk banner */}
@@ -441,119 +423,21 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* 4 stat cards stacked vertically */}
+      {/* 3 stat cards stacked vertically */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10, justifyContent: "space-between" }}>
-        {/* 여윳자금 (월별 기록) */}
-        <div
-          className="card-sm"
-          style={{
-            padding: "12px 14px",
-            background: "linear-gradient(135deg, #FFF5F3 0%, #FFF0EC 100%)",
-            borderColor: "#D4A0A0"
-          }}
-        >
-          {/* 헤더: 타이틀 + 월 네비 */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <div style={{ fontSize: 10, color: R.textLight, fontWeight: 700, letterSpacing: 0.5 }}>
-              💰 여윳자금 {!isCashCurrentMonth && <span style={{ color: R.rose500 }}>· 과거 기록</span>}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <button
-                onClick={() => shiftCashMonth(-1)}
-                style={{
-                  width: 20, height: 20, border: "none", background: "rgba(255,255,255,0.7)",
-                  borderRadius: 4, cursor: "pointer", fontSize: 11, color: R.textMid,
-                  display: "flex", alignItems: "center", justifyContent: "center"
-                }}
-                title="이전 달"
-              >‹</button>
-              <div style={{ fontSize: 11, fontWeight: 700, color: R.textDark, minWidth: 62, textAlign: "center" }}>
-                {cashY}.{String(cashM).padStart(2, "0")}
-              </div>
-              <button
-                onClick={() => shiftCashMonth(1)}
-                disabled={isCashCurrentMonth}
-                style={{
-                  width: 20, height: 20, border: "none",
-                  background: isCashCurrentMonth ? "transparent" : "rgba(255,255,255,0.7)",
-                  borderRadius: 4,
-                  cursor: isCashCurrentMonth ? "default" : "pointer",
-                  fontSize: 11, color: isCashCurrentMonth ? R.textLight : R.textMid,
-                  opacity: isCashCurrentMonth ? 0.3 : 1,
-                  display: "flex", alignItems: "center", justifyContent: "center"
-                }}
-                title="다음 달"
-              >›</button>
-            </div>
-          </div>
-
-          {/* 값 / 입력 */}
-          {editCash ? (
-            <div style={{ display: "flex", gap: 4 }}>
-              <input
-                type="number"
-                className="modal-input"
-                value={cashDraft}
-                onChange={(e) => setCashDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    setCashBalance(cashY, cashM, cashDraft === "" ? null : cashDraft);
-                    setEditCash(false);
-                  }
-                  if (e.key === "Escape") setEditCash(false);
-                }}
-                autoFocus
-                placeholder="잔고"
-                style={{ flex: 1, padding: "4px 8px", fontSize: 14, fontWeight: 700 }}
-              />
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={() => { setCashBalance(cashY, cashM, cashDraft === "" ? null : cashDraft); setEditCash(false); }}
-                style={{ padding: "0 10px", height: 28 }}
-              >✓</button>
-            </div>
-          ) : (
-            <div
-              onClick={() => {
-                setCashDraft(cashSel?.amount != null ? String(cashSel.amount) : "");
-                setEditCash(true);
-              }}
-              style={{ cursor: "pointer" }}
-            >
-              <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5, color: cashSel?.amount != null ? R.textDark : R.textLight }}>
-                {cashSel?.amount != null ? fmt(cashSel.amount) : "탭하여 입력"}
-              </div>
-              {cashSel?.amount != null && cashSelPrev?.amount != null && (() => {
-                const diff = cashSel.amount - cashSelPrev.amount;
-                const color = diff > 0 ? R.mint : diff < 0 ? R.overBudget : R.textLight;
-                return (
-                  <div style={{ fontSize: 10, color, marginTop: 2, fontWeight: 600 }}>
-                    전월 대비 {diff > 0 ? "+" : ""}{fmt(diff)}
-                  </div>
-                );
-              })()}
-              {cashSel?.amount == null && (
-                <div style={{ fontSize: 10, color: R.textLight, marginTop: 2 }}>
-                  {isCashCurrentMonth ? "월급 전날 잔고 기록" : "이 달은 기록 없음"}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
         <StatCard
           label="마통 상환"
           value={debtRemaining <= 0 ? "완납 ✓" : fmt(debtPaidTotal)}
-          sub={debtRemaining <= 0 ? "" : `/ ${fmt(DEBT_TOTAL)} · 남은 ${fmt(debtRemaining)}`}
-          pct={(debtPaidTotal / DEBT_TOTAL) * 100}
+          sub={debtRemaining <= 0 ? "" : `/ ${fmt(debtTotal)} · 남은 ${fmt(debtRemaining)}`}
+          pct={(debtPaidTotal / debtTotal) * 100}
           color={debtRemaining <= 0 ? R.mint : R.lavender}
         />
         <StatCard
           label="이번 달 변동지출"
           value={fmt(expenseSums.total)}
           sub={topCategoriesText}
-          pct={(expenseSums.total / 890000) * 100}
-          color={expenseSums.total > 890000 ? R.overBudget : R.warm}
+          pct={(expenseSums.total / (profile.expenseBudgetCap || 890000)) * 100}
+          color={expenseSums.total > (profile.expenseBudgetCap || 890000) ? R.overBudget : R.warm}
         />
         <StatCard
           label="이번 달 실행률"
@@ -569,25 +453,95 @@ export default function DashboardPage() {
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="section-title">
           수입 · 지출 · 저축 추이
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input
-              type="month"
-              value={chartFrom}
-              onChange={(e) => setChartFrom(e.target.value)}
-              className="btn btn-sm"
-              style={{ fontFamily: "inherit" }}
-            />
-            <span style={{ color: R.textLight, fontSize: 12 }}>~</span>
-            <input
-              type="month"
-              value={chartTo}
-              onChange={(e) => setChartTo(e.target.value)}
-              className="btn btn-sm"
-              style={{ fontFamily: "inherit" }}
-            />
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ display: "inline-flex", background: "#F3F4F6", borderRadius: 8, padding: 2 }}>
+              {[
+                { key: "month", label: "월별" },
+                { key: "week", label: "주간" }
+              ].map((m) => (
+                <button
+                  key={m.key}
+                  onClick={() => setChartMode(m.key)}
+                  style={{
+                    padding: "4px 12px", borderRadius: 6,
+                    background: chartMode === m.key ? "#fff" : "transparent",
+                    border: "none", fontSize: 12, fontWeight: 600,
+                    color: chartMode === m.key ? R.textDark : R.textMid,
+                    cursor: "pointer", boxShadow: chartMode === m.key ? "0 1px 2px rgba(0,0,0,0.08)" : "none"
+                  }}
+                >{m.label}</button>
+              ))}
+            </div>
+            {chartMode === "week" ? (
+              <>
+                <input
+                  type="date"
+                  value={chartFromDate}
+                  onChange={(e) => setChartFromDate(e.target.value)}
+                  className="btn btn-sm"
+                  style={{ fontFamily: "inherit" }}
+                />
+                <span style={{ color: R.textLight, fontSize: 12 }}>~</span>
+                <input
+                  type="date"
+                  value={chartToDate}
+                  onChange={(e) => setChartToDate(e.target.value)}
+                  className="btn btn-sm"
+                  style={{ fontFamily: "inherit" }}
+                />
+              </>
+            ) : (
+              <>
+                <input
+                  type="month"
+                  value={chartFromMonth}
+                  onChange={(e) => setChartFromMonth(e.target.value)}
+                  className="btn btn-sm"
+                  style={{ fontFamily: "inherit" }}
+                />
+                <span style={{ color: R.textLight, fontSize: 12 }}>~</span>
+                <input
+                  type="month"
+                  value={chartToMonth}
+                  onChange={(e) => setChartToMonth(e.target.value)}
+                  className="btn btn-sm"
+                  style={{ fontFamily: "inherit" }}
+                />
+              </>
+            )}
           </div>
         </div>
-        {chartData.length > 0 ? (
+
+        {/* Y축 범위 조정 */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10, fontSize: 11, color: R.textMid }}>
+          <span>Y축 범위:</span>
+          <input
+            type="number"
+            placeholder="최소 (자동)"
+            value={yMin}
+            onChange={(e) => setYMin(e.target.value)}
+            className="btn btn-sm"
+            style={{ width: 110, padding: "0 8px", fontFamily: "inherit", fontWeight: 500 }}
+          />
+          <span style={{ color: R.textLight }}>~</span>
+          <input
+            type="number"
+            placeholder="최대 (자동)"
+            value={yMax}
+            onChange={(e) => setYMax(e.target.value)}
+            className="btn btn-sm"
+            style={{ width: 110, padding: "0 8px", fontFamily: "inherit", fontWeight: 500 }}
+          />
+          {(yMin !== "" || yMax !== "") && (
+            <button
+              className="btn btn-sm"
+              onClick={() => { setYMin(""); setYMax(""); }}
+              style={{ padding: "0 10px" }}
+            >초기화</button>
+          )}
+        </div>
+
+        {chartData.length > 0 && chartData.some((m) => m.hasAnyData) ? (
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={R.border} />
@@ -596,6 +550,10 @@ export default function DashboardPage() {
                 tick={{ fontSize: 11, fill: R.textLight }}
                 tickFormatter={(v) => fmt(v)}
                 width={60}
+                domain={[
+                  yMin !== "" && !isNaN(Number(yMin)) ? Number(yMin) : "auto",
+                  yMax !== "" && !isNaN(Number(yMax)) ? Number(yMax) : "auto"
+                ]}
               />
               <Tooltip
                 formatter={(v, name) => [fmtWon(v), name]}
@@ -627,8 +585,10 @@ export default function DashboardPage() {
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: R.textLight, fontSize: 13 }}>
-            데이터를 입력하면 차트가 표시됩니다
+          <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: R.textLight, fontSize: 13, textAlign: "center", padding: "0 24px", whiteSpace: "pre-line", lineHeight: 1.6 }}>
+            {dbProfile
+              ? "선택한 기간에 표시할 데이터가 없습니다.\nCalendar에서 이벤트를 추가하거나 Expenses에 지출을 기록해 보세요."
+              : "온보딩을 완료하면 수입·지출·저축 추이가 표시됩니다."}
           </div>
         )}
       </div>
@@ -699,13 +659,6 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-          <div style={{
-            marginTop: 10, padding: "8px 10px", borderRadius: 8,
-            background: R.cream, border: `1px dashed ${R.border}`,
-            fontSize: 11, color: R.textLight, textAlign: "center"
-          }}>
-            메인 Phase 수정은 좌측 사이드바의 ⚙️ 프로필 편집에서 가능합니다.
-          </div>
         </div>
 
         <div className="card">
@@ -716,23 +669,20 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {allCheckpoints.map((c) => (
-                <div key={c._key} style={{ display: "flex", gap: 10, padding: 10, background: R.cream, borderRadius: 10, alignItems: "center" }}>
+              {allCheckpoints.map((c, i) => (
+                <div key={i} style={{ display: "flex", gap: 10, padding: 10, background: R.cream, borderRadius: 10, alignItems: "center" }}>
                   <div style={{ fontSize: 18, flexShrink: 0 }}>{c.icon}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: R.textDark }}>{c.title}</div>
                     {c.detail && <div style={{ fontSize: 12, color: R.textMid, marginTop: 2 }}>{c.detail}</div>}
                   </div>
-                  <button
-                    onClick={() => editCheckpoint(c)}
-                    style={{ background: "none", border: "none", color: R.textLight, fontSize: 13, padding: "2px 4px", flexShrink: 0 }}
-                    title="수정"
-                  >✏️</button>
-                  <button
-                    onClick={() => removeCheckpoint(c)}
-                    style={{ background: "none", border: "none", color: R.textLight, fontSize: 14, padding: "2px 6px", flexShrink: 0 }}
-                    title={c._kind === "default" ? "이번 달 목록에서 숨기기" : "삭제"}
-                  >×</button>
+                  {c.isCustom && (
+                    <button
+                      onClick={() => removeCheckpoint(i)}
+                      style={{ background: "none", border: "none", color: R.textLight, fontSize: 14, padding: "2px 6px", flexShrink: 0 }}
+                      title="삭제"
+                    >×</button>
+                  )}
                 </div>
               ))}
             </div>
@@ -752,20 +702,11 @@ export default function DashboardPage() {
               <button className="btn btn-sm" onClick={() => setShowCPInput(false)}>취소</button>
             </div>
           ) : (
-            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-              <button
-                className="btn btn-sm"
-                style={{ flex: 1 }}
-                onClick={() => setShowCPInput(true)}
-              >+ 체크포인트 추가</button>
-              {(cpState.hidden.length > 0 || Object.keys(cpState.overrides).length > 0) && (
-                <button
-                  className="btn btn-sm"
-                  onClick={resetDefaultCheckpoints}
-                  title="기본 체크포인트의 숨김/편집을 원복"
-                >기본 복원</button>
-              )}
-            </div>
+            <button
+              className="btn btn-sm"
+              style={{ marginTop: 8, width: "100%" }}
+              onClick={() => setShowCPInput(true)}
+            >+ 체크포인트 추가</button>
           )}
         </div>
 
@@ -780,74 +721,6 @@ export default function DashboardPage() {
         R={R}
       />
       </div>{/* /dashboard-bottom */}
-
-      {editingCP && (
-        <div className="modal-backdrop" onClick={() => setEditingCP(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
-            <div className="modal-title">체크포인트 편집</div>
-            <div className="modal-sub">
-              {editingCP.cp._kind === "default"
-                ? `기본 항목을 이번 달(${month}월)에만 다른 문구로 덮어쓰기 합니다.`
-                : "사용자 추가 항목 수정"}
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div>
-                <div style={{ fontSize: 11, color: R.textMid, marginBottom: 4 }}>아이콘</div>
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <input
-                    className="modal-input"
-                    style={{ width: 60, fontSize: 22, textAlign: "center", padding: "6px 4px" }}
-                    value={editingCP.icon}
-                    onChange={(e) => setEditingCP({ ...editingCP, icon: e.target.value })}
-                    maxLength={4}
-                  />
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4, flex: 1 }}>
-                    {["📌", "💼", "📊", "📋", "🧮", "🎯", "💰", "📈", "🛡️", "🎁", "🌸", "✨"].map((emo) => (
-                      <button
-                        key={emo}
-                        onClick={() => setEditingCP({ ...editingCP, icon: emo })}
-                        style={{
-                          width: 30, height: 30, borderRadius: 8,
-                          border: `1px solid ${editingCP.icon === emo ? R.rose400 : R.border}`,
-                          background: editingCP.icon === emo ? "#FFF5F5" : "#fff",
-                          cursor: "pointer", fontSize: 16, padding: 0,
-                          fontFamily: "inherit"
-                        }}
-                      >{emo}</button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 11, color: R.textMid, marginBottom: 4 }}>제목</div>
-                <input
-                  className="modal-input"
-                  value={editingCP.title}
-                  onChange={(e) => setEditingCP({ ...editingCP, title: e.target.value })}
-                  onKeyDown={(e) => { if (e.key === "Enter") saveCPEdit(); }}
-                  autoFocus
-                />
-              </div>
-              <div>
-                <div style={{ fontSize: 11, color: R.textMid, marginBottom: 4 }}>상세 (선택)</div>
-                <textarea
-                  className="modal-input"
-                  rows={3}
-                  style={{ resize: "vertical", fontSize: 13, fontWeight: 500, lineHeight: 1.5 }}
-                  value={editingCP.detail}
-                  onChange={(e) => setEditingCP({ ...editingCP, detail: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="modal-actions">
-              <button className="btn btn-sm" onClick={() => setEditingCP(null)}>취소</button>
-              <button className="btn btn-primary btn-sm" onClick={saveCPEdit}>저장</button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
