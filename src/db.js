@@ -322,6 +322,20 @@ export async function setUserProfile(patch) {
   return next;
 }
 
+// ---------- attendance ----------
+export async function getAttendanceDates() {
+  const row = await db.settings.get("attendance-dates");
+  return Array.isArray(row?.value) ? row.value : [];
+}
+
+export async function markAttendance(dateKey) {
+  const dates = await getAttendanceDates();
+  if (dates.includes(dateKey)) return dates;
+  const next = [...dates, dateKey].sort();
+  await db.settings.put({ id: "attendance-dates", value: next });
+  return next;
+}
+
 export async function isOnboardingComplete() {
   const row = await db.settings.get("onboarding-complete");
   return !!row?.value;
@@ -432,4 +446,20 @@ export async function getExpectedIncome(year, month) {
 }
 export async function setExpectedIncome(year, month, map) {
   await db.settings.put({ id: `expected-income-${year}-${month}`, value: map });
+}
+
+// ---------- 월별 여윳자금 (즉시 인출 가능 현금 잔고) ----------
+export async function getCashBalance(year, month) {
+  const row = await db.settings.get(`cash-balance-${year}-${month}`);
+  return row?.value;
+}
+export async function setCashBalance(year, month, amount) {
+  if (amount === null || amount === "" || amount === undefined) {
+    await db.settings.delete(`cash-balance-${year}-${month}`);
+  } else {
+    await db.settings.put({
+      id: `cash-balance-${year}-${month}`,
+      value: { amount: Number(amount), updatedAt: new Date() }
+    });
+  }
 }

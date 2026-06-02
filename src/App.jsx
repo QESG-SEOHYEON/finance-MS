@@ -3,12 +3,17 @@ import { useLiveQuery } from "dexie-react-hooks";
 import Sidebar from "./components/Sidebar.jsx";
 import OnboardingModal from "./components/OnboardingModal.jsx";
 import ChangelogModal from "./components/ChangelogModal.jsx";
+import AttendanceModal from "./components/AttendanceModal.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import CalendarPage from "./pages/CalendarPage.jsx";
 import ExpensesPage from "./pages/ExpensesPage.jsx";
 import EconomyPage from "./pages/EconomyPage.jsx";
-import { isOnboardingComplete, getUserProfile } from "./db.js";
+import {
+  isOnboardingComplete, getUserProfile,
+  getAttendanceDates, markAttendance
+} from "./db.js";
 import { getUserPhases } from "./lib/phase.js";
+import { attendanceKeyForNow, msUntilNextKSTNoon } from "./lib/attendance.js";
 
 const VALID = ["dashboard", "calendar", "expenses", "economy"];
 
@@ -19,12 +24,27 @@ function readHash() {
 
 const CHANGELOG_SEEN_KEY = "changelog-last-seen";
 
+function computeStreak(sortedDates, todayKey) {
+  const set = new Set(sortedDates);
+  let count = 0;
+  let cursor = new Date(`${todayKey}T00:00:00Z`);
+  if (!set.has(todayKey)) cursor.setUTCDate(cursor.getUTCDate() - 1);
+  while (true) {
+    const key = cursor.toISOString().slice(0, 10);
+    if (set.has(key)) {
+      count++;
+      cursor.setUTCDate(cursor.getUTCDate() - 1);
+    } else break;
+  }
+  return count;
+}
+
 export default function App() {
   const [page, setPage] = useState(readHash());
   const [ready, setReady] = useState(false);
   const [onboardingState, setOnboardingState] = useState(null);
   const [changelogEntries, setChangelogEntries] = useState(null);
-  // null | { mode: "initial" } | { mode: "edit", profile, phases }
+  const [attendanceModal, setAttendanceModal] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -34,7 +54,7 @@ export default function App() {
     })();
   }, []);
 
-  // 업데이트 알림: changelog.json 을 가져와 처음 보는 항목이 있으면 모달로 표시
+  // 업데이트 알림: changelog.json
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -46,16 +66,13 @@ export default function App() {
         if (entries.length === 0) return;
         const latestVersion = entries.map((e) => String(e.version)).sort().slice(-1)[0];
         const seen = localStorage.getItem(CHANGELOG_SEEN_KEY);
-        // 최초 설치: 알림 띄우지 않고 기준점만 저장 (신규 유저는 과거 이력 관심 없음)
         if (!seen) {
           if (latestVersion) localStorage.setItem(CHANGELOG_SEEN_KEY, latestVersion);
           return;
         }
         const fresh = entries.filter((e) => String(e.version) > seen);
         if (!cancelled && fresh.length > 0) setChangelogEntries(fresh);
-      } catch {
-        // 네트워크 오류시 조용히 무시
-      }
+      } catch {}
     })();
     return () => { cancelled = true; };
   }, []);
@@ -68,7 +85,37 @@ export default function App() {
     setChangelogEntries(null);
   };
 
-  // 사용자가 설정한 대시보드 제목을 브라우저 탭 타이틀에도 반영
+  // 출석체크: 마운트 + visibilitychange + KST 정오 타이머
+  useEffect(() => {
+    let cancelled = false;
+    let timer;
+    const checkToday = async () => {
+      if (cancelled) return;
+      const onboardingDone = await isOnboardingComplete();
+      if (!onboardingDone) return;
+      const todayKey = attendanceKeyForNow();
+      const dates = await getAttendanceDates();
+      if (cancelled) return;
+      if (!dates.includes(todayKey)) {
+        const streak = computeStreak(dates, todayKey);
+        const hasPrior = dates.length > 0;
+        setAttendanceModal({ todayKey, streak, hasPrior });
+      }
+      clearTimeout(timer);
+      timer = setTimeout(checkToday, msUntilNextKSTNoon() + 1000);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") checkToday();
+    };
+    checkToday();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [onboardingState]);
+
   const dbProfile = useLiveQuery(() => getUserProfile(), [], null);
   useEffect(() => {
     const title = dbProfile?.dashboardTitle?.trim()
@@ -103,6 +150,10 @@ export default function App() {
     );
   }
 
+  // 우선순위: 온보딩 → changelog → 출석체크
+  const showChangelog = changelogEntries && !onboardingState;
+  const showAttendance = attendanceModal && !onboardingState && !showChangelog;
+
   return (
     <div className="app-shell">
       <Sidebar page={page} onNavigate={navigate} onOpenProfileEdit={openProfileEdit} />
@@ -120,8 +171,16 @@ export default function App() {
           initialPhases={onboardingState.mode === "edit" ? onboardingState.phases : undefined}
         />
       )}
-      {changelogEntries && !onboardingState && (
+      {showChangelog && (
         <ChangelogModal entries={changelogEntries} onClose={closeChangelog} />
+      )}
+      {showAttendance && (
+        <AttendanceModal
+          streak={attendanceModal.streak}
+          hasPrior={attendanceModal.hasPrior}
+          onStamp={() => markAttendance(attendanceModal.todayKey)}
+          onClose={() => setAttendanceModal(null)}
+        />
       )}
     </div>
   );
