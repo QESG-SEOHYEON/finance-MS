@@ -206,19 +206,29 @@ export default function DashboardPage() {
   const [showCPInput, setShowCPInput] = useState(false);
 
   useEffect(() => {
-    getCustomGoals(phase.num).then(setPhaseCustom);
+    getCustomGoals(phase.num).then((v) => setPhaseCustom({
+      added: Array.isArray(v?.added) ? v.added : [],
+      hidden: Array.isArray(v?.hidden) ? v.hidden : []
+    }));
   }, [phase.num]);
 
   useEffect(() => {
-    getCustomCheckpoints(year, month).then(setCustomCPs);
+    getCustomCheckpoints(year, month).then((v) => setCustomCPs(Array.isArray(v) ? v : []));
   }, [year, month]);
 
+  // 모든 spread 대상은 명시적으로 배열로 보장
+  const safeGoals = Array.isArray(phase?.goals) ? phase.goals : [];
+  const safeHidden = Array.isArray(phaseCustom?.hidden) ? phaseCustom.hidden : [];
+  const safeAdded = Array.isArray(phaseCustom?.added) ? phaseCustom.added : [];
+  const safeCPs = Array.isArray(customCPs) ? customCPs : [];
+  const safeDefaultCheckpoints = Array.isArray(defaultCheckpoints) ? defaultCheckpoints : [];
+
   const visibleGoals = [
-    ...phase.goals.filter((g) => !phaseCustom.hidden.includes(g)),
-    ...phaseCustom.added
+    ...safeGoals.filter((g) => !safeHidden.includes(g)),
+    ...safeAdded
   ];
 
-  const allCheckpoints = [...defaultCheckpoints, ...customCPs];
+  const allCheckpoints = [...safeDefaultCheckpoints, ...safeCPs];
 
   const addGoal = async () => {
     if (!newGoal.trim()) return;
