@@ -3,17 +3,19 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 // GitHub Pages 배포 시 base는 repo 이름과 일치해야 함
-// 환경변수 BASE_PATH 또는 GITHUB_REPOSITORY에서 자동 추출
 const repoName = process.env.GITHUB_REPOSITORY?.split("/")[1];
 const base = process.env.BASE_PATH || (repoName ? `/${repoName}/` : "./");
 
-// 설치 후 OS에 표시되는 기본 이름 (사용자가 온보딩에서 입력한 대시보드 제목은
-// 실행 중 브라우저 탭/문서 타이틀에 동적으로 반영됨)
 const APP_NAME = "자산관리 앱";
 const APP_SHORT = "자산관리";
 
 export default defineConfig({
   base,
+  // 보다 넓은 브라우저 호환 (Naver Whale, Edge, Safari, 구형 Chrome 포함)
+  // 한국 Whale은 Chromium 기반이지만 메이저 버전이 Chrome보다 약간 늦음.
+  build: {
+    target: ["chrome87", "edge88", "firefox78", "safari14"]
+  },
   plugins: [
     react(),
     VitePWA({
@@ -37,7 +39,11 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: `${base}index.html`,
-        globPatterns: ["**/*.{js,css,html,svg,png,ico,webmanifest,jpeg,jpg}"]
+        globPatterns: ["**/*.{js,css,html,svg,png,ico,webmanifest,jpeg,jpg}"],
+        // 새 SW가 바로 활성화되고 옛 캐시는 정리 → 업데이트 후 흰 화면 방지
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true
       }
     })
   ]
