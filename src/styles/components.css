@@ -1,3 +1,15 @@
+/* ========== Pixel cat (attendance) ========== */
+@keyframes catBob {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50%      { transform: translateY(-2px) rotate(1deg); }
+}
+.pixel-cat-sprite {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  animation: catBob 0.6s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
 /* ========== Reset / globals ========== */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
