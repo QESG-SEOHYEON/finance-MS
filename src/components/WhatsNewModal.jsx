@@ -24,7 +24,7 @@ const SLIDES = [
       '1. 카테고리에 "자산 종류"를 태그하면 자동 계산돼요.\n' +
       "2. 헷갈리면 ℹ️ 가이드 버튼를 누르세요.\n" +
       "(어떤 자산 종류가 있는지 나와있음)",
-    image: "/whats-new/02-net-worth.png",
+    image: "./whats-new/02-net-worth.png",
     accent: R.mint
   },
   {
@@ -35,7 +35,7 @@ const SLIDES = [
       "• 더블클릭 = 설정 리셋\n" +
       "• 좌상단에 실시간 값 표시" +
       "2. 카테고리 탭과 수입/자산 탭으로 차트를 나눴어요. 이제 테마별로 추이를 확인해보세요.\n" ,
-    image: "/whats-new/03-trend-chart.png",
+    image: "./whats-new/03-trend-chart.png",
     accent: R.lavender
   },
   {
@@ -44,7 +44,7 @@ const SLIDES = [
       "(구 반복지출 → 반복일정)\n" +
       "매월 / 매주 / 격주 모두 지원.\n" +
       "카테고리 선택하면 자산 종류 자동 적용.",
-    image: "/whats-new/04-recurring.png",
+    image: "./whats-new/04-recurring.png",
     accent: R.rose400
   },
   {
@@ -52,7 +52,7 @@ const SLIDES = [
     body:
       '카테고리에 "캘린더에 표시" 체크하면\n' +
       "그 기록이 캘린더에 점선 박스로 떠요.",
-    image: "/whats-new/06-orphan-banner.png",
+    image: "./whats-new/06-orphan-banner.png",
     accent: R.mint
   },
   {
