@@ -104,6 +104,8 @@ export default function OnboardingModal({ onComplete, onClose, initialProfile, i
         incomeSources: (initialProfile.incomeSources && initialProfile.incomeSources.length > 0)
           ? initialProfile.incomeSources
           : [{ ...DEFAULT_INCOME_SOURCE, id: `src-${Date.now()}`, name: "월급" }],
+        incomeSkipped: !!initialProfile.incomeSkipped,
+        startYM: initialProfile.startYM || "",
         expenseBudgetCap: initialProfile.expenseBudgetCap ?? "",
         phaseMode: (initialPhases && initialPhases.length > 0) ? "use" : "none",
         customPhases: initialPhases || [],
@@ -116,6 +118,8 @@ export default function OnboardingModal({ onComplete, onClose, initialProfile, i
       dashboardTitle: "", dashboardSubtitle: "",
       currentNetWorth: "", goalAmount: "", goalDate: "",
       incomeSources: [{ ...DEFAULT_INCOME_SOURCE, id: `src-${Date.now()}`, name: "월급" }],
+      incomeSkipped: false,
+      startYM: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`,
       expenseBudgetCap: "",
       phaseMode: "use",
       customPhases: [],
@@ -186,7 +190,7 @@ export default function OnboardingModal({ onComplete, onClose, initialProfile, i
   const stepValid = (() => {
     if (step === 0) return data.name.trim().length > 0 && data.age;
     if (step === 1) return data.currentNetWorth !== "" && data.goalAmount !== "" && data.goalDate;
-    if (step === 2) return data.incomeSources.length > 0 && data.incomeSources.every((s) => s.name.trim() && s.amount !== "");
+    if (step === 2) return data.incomeSkipped || (data.incomeSources.length > 0 && data.incomeSources.every((s) => s.name.trim() && s.amount !== ""));
     if (step === 3) return data.expenseBudgetCap !== "";
     if (step === 4) return data.phaseMode === "none" ||
                           (data.phaseMode === "use" && data.customPhases.every((p) => p.name.trim()));
@@ -198,7 +202,7 @@ export default function OnboardingModal({ onComplete, onClose, initialProfile, i
   const prev = () => setStep((s) => Math.max(s - 1, 0));
 
   const finish = async () => {
-    const sources = data.incomeSources.map((s) => ({
+    const sources = data.incomeSkipped ? [] : data.incomeSources.map((s) => ({
       ...s,
       amount: Number(s.amount) || 0,
       // 고정 수입은 입력 없으면 25일 기본, 변동 수입은 null 허용 (월말 표시)
@@ -218,6 +222,10 @@ export default function OnboardingModal({ onComplete, onClose, initialProfile, i
       goalAmount: Number(data.goalAmount) || 0,
       goalDate: data.goalDate,
       incomeSources: sources,
+      incomeSkipped: !!data.incomeSkipped,
+      // 정기 수입 시작월 — 이 달 이전에는 캘린더/차트에 수입이 생성되지 않음.
+      // 기존 값 있으면 보존, 없으면 현재 월로 스탬프.
+      startYM: data.startYM || `${new Date().getFullYear()}-${new Date().getMonth() + 1}`,
       salary: Number(firstFixed?.amount) || 0,
       salaryDay: Number(firstFixed?.day) || 25,
       expenseBudgetCap: Number(data.expenseBudgetCap) || 0,
@@ -381,6 +389,51 @@ export default function OnboardingModal({ onComplete, onClose, initialProfile, i
         {/* Step 2: 수입 (다중 소스) */}
         {step === 2 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {/* 수입 입력 건너뛰기 토글 */}
+            <label style={{
+              display: "flex", alignItems: "center", gap: 8,
+              background: data.incomeSkipped ? T.accent + "18" : T.accentBg,
+              border: `1px solid ${data.incomeSkipped ? T.accent : T.border}`,
+              borderRadius: 10, padding: "10px 12px", cursor: "pointer",
+              fontSize: 13, fontWeight: 700, color: data.incomeSkipped ? T.accent : T.textMid
+            }}>
+              <input
+                type="checkbox"
+                checked={!!data.incomeSkipped}
+                onChange={(e) => set({ incomeSkipped: e.target.checked })}
+                style={{ width: 16, height: 16, accentColor: T.accent }}
+              />
+              수입은 나중에 입력할게요 (건너뛰기)
+            </label>
+            {data.incomeSkipped ? (
+              <div style={{
+                background: T.accentBg, borderRadius: 10, padding: 12,
+                fontSize: 12, color: T.textMid, lineHeight: 1.6
+              }}>
+                수입원은 비워둘게요. 나중에 <b>⚙️ 프로필 수정</b> 또는 캘린더 <b>+ 추가</b>로
+                언제든 등록할 수 있어요. (저축 여력·차트의 수입 항목은 0으로 표시됩니다)
+              </div>
+            ) : (
+            <>
+            <div style={{
+              display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+              background: T.accentBg, border: `1px solid ${T.border}`,
+              borderRadius: 10, padding: "10px 12px", fontSize: 13, color: T.textMid
+            }}>
+              <span style={{ fontWeight: 700 }}>📅 수입 시작 월</span>
+              <input
+                type="month"
+                className="onb-input"
+                value={(() => {
+                  if (!data.startYM) return "";
+                  const [y, m] = String(data.startYM).split("-");
+                  return y && m ? `${y}-${String(m).padStart(2, "0")}` : "";
+                })()}
+                onChange={(e) => set({ startYM: e.target.value })}
+                style={{ width: 150 }}
+              />
+              <span style={{ fontSize: 11, color: T.textLight }}>이 달부터 캘린더·차트에 표시 (이전 달엔 안 뜸)</span>
+            </div>
             <div style={{
               background: T.accentBg, borderRadius: 10, padding: 12,
               fontSize: 12, color: T.textMid, lineHeight: 1.6
@@ -450,6 +503,8 @@ export default function OnboardingModal({ onComplete, onClose, initialProfile, i
                 cursor: "pointer", fontSize: 13, fontWeight: 700
               }}
             >+ 수입원 추가</button>
+            </>
+            )}
           </div>
         )}
 

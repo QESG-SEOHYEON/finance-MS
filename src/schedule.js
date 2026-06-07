@@ -51,8 +51,16 @@ function buildDefaultTasks(year, month, profile, expectedIncomeThisMonth, debtPa
   const daysInMonth = getDaysInMonth(year, month);
   const clamp = (d) => Math.max(1, Math.min(daysInMonth, Number(d) || 1));
 
+  // 수입 시작월 게이트: profile.startYM("YYYY-M") 이전 달에는 정기 수입을 생성하지 않음.
+  // startYM 없는 기존 사용자는 게이트 미적용(현행 유지).
+  let incomeBlocked = false;
+  if (profile.startYM) {
+    const [sy, sm] = String(profile.startYM).split("-").map(Number);
+    if (sy && sm && (year * 12 + month) < (sy * 12 + sm)) incomeBlocked = true;
+  }
+
   // 수입
-  for (const src of profile.incomeSources || []) {
+  for (const src of (incomeBlocked ? [] : (profile.incomeSources || []))) {
     // 변동 수입이고 입금일 없으면 월말로 표시 (일정 없이 해당 월 합계에 포함됨)
     const day = (src.day == null || src.day === "")
       ? daysInMonth
