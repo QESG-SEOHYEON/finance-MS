@@ -507,6 +507,14 @@ export default function CalendarPage() {
         <div className="card">
           <div className="section-title">
             {month}월 저축 여력
+            <span className="section-meta">수입 − 총지출</span>
+          </div>
+          <div style={{
+            background: "#F4FAF6", border: "1px solid #CDE9D8", borderRadius: 8,
+            padding: "8px 10px", fontSize: 11, color: "#3B7A5A", lineHeight: 1.5
+          }}>
+            한 달 수입에서 <b>고정 · 투자 · 부채상환 · 변동지출</b>을 모두 뺀 금액이에요.
+            정기 투자까지 다 하고도 남는 여윳돈이라, 투자분도 지출에 포함됩니다.
           </div>
           <div style={{ textAlign: "center", padding: "16px 0" }}>
             <div style={{ fontSize: 12, color: "#B8A9A3" }}>예상 저축액</div>
