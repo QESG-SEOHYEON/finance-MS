@@ -1,6 +1,7 @@
 export const EXPENSE_CATEGORIES = [
   {
     key: "food",
+    nwImpact: "expense",
     label: "식비",
     icon: "🍽️",
     color: "#C08060",
@@ -23,6 +24,7 @@ export const EXPENSE_CATEGORIES = [
   },
   {
     key: "leisure",
+    nwImpact: "expense",
     label: "여가생활",
     icon: "🎉",
     color: "#9B7EC0",
@@ -44,6 +46,7 @@ export const EXPENSE_CATEGORIES = [
   },
   {
     key: "other",
+    nwImpact: "expense",
     label: "기타지출",
     icon: "📦",
     color: "#A09088",

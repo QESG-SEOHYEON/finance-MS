@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { fmt, fmtWon } from "../schedule.js";
+import MoneyInput from "./MoneyInput.jsx";
 
 export default function AmountEditor({ task, actual, onSave, onClose }) {
   const [value, setValue] = useState(actual ?? Math.abs(task.amount));
@@ -28,8 +29,8 @@ export default function AmountEditor({ task, actual, onSave, onClose }) {
         <div className="modal-sub">
           예상 {fmtWon(task.amount)} · 실제 금액을 입력하세요
         </div>
-        <input
-          type="number"
+        <MoneyInput
+          type="text" 
           inputMode="numeric"
           className="modal-input"
           value={value}

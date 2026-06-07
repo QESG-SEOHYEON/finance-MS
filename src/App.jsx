@@ -4,13 +4,16 @@ import Sidebar from "./components/Sidebar.jsx";
 import OnboardingModal from "./components/OnboardingModal.jsx";
 import ChangelogModal from "./components/ChangelogModal.jsx";
 import AttendanceModal from "./components/AttendanceModal.jsx";
+import AssetSetupWizard from "./components/AssetSetupWizard.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import CalendarPage from "./pages/CalendarPage.jsx";
 import ExpensesPage from "./pages/ExpensesPage.jsx";
 import EconomyPage from "./pages/EconomyPage.jsx";
 import {
   isOnboardingComplete, getUserProfile,
-  getAttendanceDates, markAttendance
+  getAttendanceDates, markAttendance,
+  applyRecurringTasksForMonth, migrateRecurringExpensesToTasks,
+  isAssetSetupDone
 } from "./db.js";
 import { getUserPhases } from "./lib/phase.js";
 import { attendanceKeyForNow, msUntilNextKSTNoon } from "./lib/attendance.js";
@@ -45,11 +48,32 @@ export default function App() {
   const [onboardingState, setOnboardingState] = useState(null);
   const [changelogEntries, setChangelogEntries] = useState(null);
   const [attendanceModal, setAttendanceModal] = useState(null);
+  const [showAssetWizard, setShowAssetWizard] = useState(false);
 
   useEffect(() => {
     (async () => {
       const done = await isOnboardingComplete();
       if (!done) setOnboardingState({ mode: "initial" });
+
+      // 기존 반복 지출 → 반복 일정 1회 마이그레이션
+      try {
+        const r = await migrateRecurringExpensesToTasks();
+        if (r.migrated > 0) console.log(`[migrate] 반복 지출 ${r.migrated}건을 반복 일정으로 이전했어요.`);
+      } catch (e) { console.warn("[migrate] failed", e); }
+
+      // 진입 시 현재 달의 반복 일정 자동 적용
+      try {
+        const now = new Date();
+        await applyRecurringTasksForMonth(now.getFullYear(), now.getMonth() + 1);
+      } catch {}
+
+      // 자산 마법사 — 온보딩 완료자 중 아직 한 번도 안 본 사람만
+      try {
+        const onboardingDone = await isOnboardingComplete();
+        const setupDone = await isAssetSetupDone();
+        if (onboardingDone && !setupDone) setShowAssetWizard(true);
+      } catch {}
+
       setReady(true);
     })();
   }, []);
@@ -150,9 +174,10 @@ export default function App() {
     );
   }
 
-  // 우선순위: 온보딩 → changelog → 출석체크
-  const showChangelog = changelogEntries && !onboardingState;
-  const showAttendance = attendanceModal && !onboardingState && !showChangelog;
+  // 우선순위: 온보딩 → 자산 마법사 → changelog → 출석체크
+  const showWizard = showAssetWizard && !onboardingState;
+  const showChangelog = changelogEntries && !onboardingState && !showWizard;
+  const showAttendance = attendanceModal && !onboardingState && !showWizard && !showChangelog;
 
   return (
     <div className="app-shell">
@@ -170,6 +195,9 @@ export default function App() {
           initialProfile={onboardingState.mode === "edit" ? onboardingState.profile : undefined}
           initialPhases={onboardingState.mode === "edit" ? onboardingState.phases : undefined}
         />
+      )}
+      {showWizard && (
+        <AssetSetupWizard onClose={() => setShowAssetWizard(false)} />
       )}
       {showChangelog && (
         <ChangelogModal entries={changelogEntries} onClose={closeChangelog} />

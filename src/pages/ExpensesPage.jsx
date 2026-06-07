@@ -8,7 +8,8 @@ import {
   getCustomCategories, setCustomCategoriesStore,
   getCategoryOverrides, setCategoryOverrides,
   migrateExpensesCategory,
-  getRecurring, setRecurring, applyRecurringForMonth
+  getRecurring, setRecurring, applyRecurringForMonth,
+  getRecurringTasks, setRecurringTasks, applyRecurringTasksForMonth
 } from "../db.js";
 import {
   EXPENSE_CATEGORIES, getCategory, mergeCategories,
@@ -18,6 +19,9 @@ import {
 import { formatKorean } from "../lib/format.js";
 import { fmt, fmtWon } from "../schedule.js";
 import TopBar from "../components/TopBar.jsx";
+import RecurringTaskEditor from "../components/RecurringTaskEditor.jsx";
+import AssetTypeGuideModal, { AssetTypeHelpButton } from "../components/AssetTypeGuide.jsx";
+import MoneyInput from "../components/MoneyInput.jsx";
 
 const R = {
   rose300: "#D4A0A0",
@@ -131,6 +135,8 @@ export default function ExpensesPage() {
     [],
     []
   );
+  const recurringTasks = useLiveQuery(() => getRecurringTasks(), [], []);
+  const [editingRT, setEditingRT] = useState(null);   // null | initial(객체 또는 {})
   const customCategoriesList = useLiveQuery(
     () => db.settings.get("custom-categories").then((r) => r?.value || []),
     [],
@@ -162,26 +168,35 @@ export default function ExpensesPage() {
     ...(customPresets || []).map((p, i) => ({ ...p, __customIdx: i }))
   ];
 
+  // 자산 종류가 "지출"인 카테고리만 total에 합산. 카테고리별 sum은 모두 유지.
+  const catByKey = useMemo(() => {
+    const m = {};
+    for (const c of allCategories) m[c.key] = c;
+    return m;
+  }, [allCategories]);
+
   const sums = useMemo(() => {
     const s = { total: 0 };
     for (const c of allCategories) s[c.key] = 0;
     for (const e of expenses || []) {
       const k = e.category === "social" ? "leisure" : e.category === "transit" ? "other" : e.category;
       s[k] = (s[k] || 0) + e.amount;
-      s.total += e.amount;
+      const impact = (catByKey[k]?.nwImpact) || "expense";
+      if (impact === "expense") s.total += e.amount;
     }
     return s;
-  }, [expenses, allCategories]);
+  }, [expenses, allCategories, catByKey]);
 
   const prevSums = useMemo(() => {
     const s = { total: 0, food: 0, leisure: 0, other: 0 };
     for (const e of prevExpenses || []) {
       const k = e.category === "social" ? "leisure" : e.category === "transit" ? "other" : e.category;
       s[k] = (s[k] || 0) + e.amount;
-      s.total += e.amount;
+      const impact = (catByKey[k]?.nwImpact) || "expense";
+      if (impact === "expense") s.total += e.amount;
     }
     return s;
-  }, [prevExpenses]);
+  }, [prevExpenses, catByKey]);
 
   const filteredExpenses = useMemo(() => {
     return (expenses || []).filter((e) => {
@@ -460,6 +475,11 @@ export default function ExpensesPage() {
             const amt = sums[c.key] || 0;
             const over = c.cap && amt > c.cap * 0.8;
             const isDefault = DEFAULT_CATEGORY_KEYS.has(c.key);
+            const IMPACT_EMOJI = {
+              liquid_asset: "💧", locked_asset: "🔒", debt_down: "⚡",
+              income: "💰", neutral: "⚪", expense: ""
+            };
+            const impactEmoji = IMPACT_EMOJI[c.nwImpact || "expense"] || "";
             return (
               <div key={c.key} style={{ display: "inline-flex", alignItems: "stretch" }}>
                 <button
@@ -483,6 +503,16 @@ export default function ExpensesPage() {
                 >
                   <span style={{ fontSize: 14 }}>{c.icon}</span>
                   <span>{c.label}</span>
+                  {impactEmoji && (
+                    <span
+                      style={{ fontSize: 10, opacity: 0.7 }}
+                      title={`자산 종류: ${({
+                        liquid_asset: "💧 유동 자산↑", locked_asset: "🔒 묶인 자산↑",
+                        debt_down: "⚡ 부채 감소", income: "💰 수입",
+                        neutral: "⚪ 중립", expense: "🔴 지출"
+                      })[c.nwImpact || "expense"]}`}
+                    >{impactEmoji}</span>
+                  )}
                   {amt > 0 && (
                     <span style={{ fontSize: 10, color: over ? R.over : active ? c.color : R.textLight, fontWeight: 600, opacity: 0.85 }}>
                       {fmt(amt)}
@@ -557,8 +587,6 @@ export default function ExpensesPage() {
               <input
                 type="date"
                 value={inputDate}
-                min={monthMin}
-                max={monthMax}
                 onChange={(e) => setInputDate(e.target.value)}
                 style={{
                   border: "none", outline: "none", fontSize: 12, fontWeight: 600,
@@ -663,11 +691,7 @@ export default function ExpensesPage() {
             </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "flex-start" }}>
               <div style={{ display: "flex", flexDirection: "column", width: 110 }}>
-                <input
-                  type="number"
-                  placeholder="금액"
-                  value={newPresetAmount}
-                  onChange={(e) => setNewPresetAmount(e.target.value)}
+                <MoneyInput placeholder="금액" value={newPresetAmount} onChange={(e) => setNewPresetAmount(e.target.value)}
                   className="modal-input"
                   style={{ padding: "8px 10px", fontSize: 13 }}
                 />
@@ -732,15 +756,11 @@ export default function ExpensesPage() {
         }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: category.color, marginBottom: 8, display: "inline-flex", gap: 4, alignItems: "center" }}>
             ✏️ 직접 입력
-            <span style={{ color: R.textLight, fontWeight: 500 }}>· 한 번만 쓰는 지출</span>
+            <span style={{ color: R.textLight, fontWeight: 500 }}>· 일회성 기록</span>
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <div style={{ display: "flex", flexDirection: "column", width: 120 }}>
-              <input
-                type="number"
-                inputMode="numeric"
-                placeholder="금액"
-                value={customAmount}
+              <MoneyInput placeholder="금액" value={customAmount}
                 onChange={(e) => setCustomAmount(e.target.value)}
                 className="modal-input"
                 style={{ padding: "8px 10px", fontSize: 13 }}
@@ -793,7 +813,8 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      {/* Recurring expenses */}
+      {/* Recurring expenses — 구버전 UI. 마이그레이션 후 숨김. 기존 데이터는 이미 반복 일정으로 이전 처리됨. */}
+      {false && (
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="section-title">
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -903,10 +924,7 @@ export default function ExpensesPage() {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8, alignItems: "flex-start" }}>
                 <div style={{ display: "flex", flexDirection: "column" }}>
-                  <input
-                    type="number"
-                    placeholder="금액"
-                    value={newRec.amount}
+                  <MoneyInput placeholder="금액" value={newRec.amount}
                     onChange={(e) => setNewRec({ ...newRec, amount: e.target.value })}
                     className="modal-input"
                     style={{ padding: "10px 12px", fontSize: 14, fontWeight: 600 }}
@@ -929,6 +947,82 @@ export default function ExpensesPage() {
             </div>
           </div>
         )}
+      </div>
+      )}
+
+      {/* === 반복 일정 (수입·투자·부채까지 통합) === */}
+      <div className="card" style={{ marginTop: 12 }}>
+        <div className="section-title" style={{ marginBottom: 8 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <span style={{
+              width: 26, height: 26, borderRadius: 8,
+              background: R.mint || "#6BAF8D", color: "#fff",
+              display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13
+            }}>🔁</span>
+            반복 일정
+            <span style={{ fontSize: 10, color: R.textLight, fontWeight: 500 }}>· 수입 / 투자 / 부채 / 일반</span>
+          </span>
+          <span className="section-meta">
+            {(recurringTasks || []).length}개 등록
+          </span>
+        </div>
+
+        {(recurringTasks || []).length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+            {recurringTasks.map((r) => (
+              <div key={r.id} style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "8px 10px", borderRadius: 10,
+                background: R.cream, border: `1px solid ${R.border}`
+              }}>
+                <span style={{ fontSize: 16 }}>{r.icon || (r.type === "income" ? "💰" : r.type === "invest" ? "📈" : r.type === "debt" ? "⚡" : "📌")}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: R.textDark }}>{r.label}</div>
+                  <div style={{ fontSize: 10, color: R.textLight, marginTop: 1 }}>
+                    {r.frequency === "monthly" && `매월 ${r.dayOfMonth}일`}
+                    {r.frequency === "weekly" && `매주 ${["일","월","화","수","목","금","토"][r.weekday]}요일`}
+                    {r.frequency === "biweekly" && `격주 ${["일","월","화","수","목","금","토"][r.weekday]}요일`}
+                    {" · "}{r.type === "income" ? "수입" : r.type === "fixed" ? "고정지출" : r.type === "invest" ? "투자" : r.type === "debt" ? "부채 상환" : "일반"}
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: r.type === "income" ? "#3B7A5A" : R.rose500 }}>
+                  {r.type === "income" ? "+" : "−"}{fmt(r.amount)}
+                </div>
+                <button
+                  onClick={() => setEditingRT(r)}
+                  style={{ background: "none", border: "none", fontSize: 12, color: R.textLight, cursor: "pointer", padding: "2px 4px" }}
+                  title="편집"
+                >✏️</button>
+                <button
+                  onClick={async () => {
+                    if (!confirm(`"${r.label}" 반복 일정을 삭제할까요?`)) return;
+                    await setRecurringTasks((recurringTasks || []).filter((x) => x.id !== r.id));
+                  }}
+                  style={{ background: "none", border: "none", fontSize: 14, color: R.textLight, cursor: "pointer", padding: "2px 4px" }}
+                  title="삭제"
+                >×</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            className="btn btn-sm"
+            style={{ flex: 1 }}
+            onClick={() => setEditingRT({})}
+          >+ 반복 일정 추가</button>
+          {(recurringTasks || []).length > 0 && (
+            <button
+              className="btn btn-sm"
+              onClick={async () => {
+                const n = await applyRecurringTasksForMonth(year, month);
+                alert(n > 0 ? `${n}건 반영됨` : "이미 모두 반영되어 있어요.");
+              }}
+              title="이번 달 캘린더에 반복 일정 즉시 추가"
+            >이번 달 일정에 넣기</button>
+          )}
+        </div>
       </div>
 
       </div>{/* /expenses-left */}
@@ -1049,6 +1143,15 @@ export default function ExpensesPage() {
           onClose={() => setCategoryEditor(null)}
         />
       )}
+
+      {editingRT !== null && (
+        <RecurringTaskEditor
+          initial={editingRT.id ? editingRT : null}
+          allItems={recurringTasks || []}
+          allCategories={allCategories}
+          onClose={() => setEditingRT(null)}
+        />
+      )}
     </>
   );
 }
@@ -1128,10 +1231,7 @@ function ExpenseEditor({ expense, allCategories, onSave, onDelete, onClose }) {
           style={{ marginBottom: 10 }}
         />
 
-        <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+        <MoneyInput value={amount} onChange={(e) => setAmount(e.target.value)}
           className="modal-input"
           placeholder="금액"
           style={{ marginBottom: 2 }}
@@ -1177,8 +1277,11 @@ function CategoryEditor({ mode, category, isDefault, onSave, onClose }) {
     return found >= 0 ? found : 0;
   });
   const [cap, setCap] = useState(category?.cap ?? "");
+  const [nwImpact, setNwImpact] = useState(category?.nwImpact || "expense");
+  const [showOnCalendar, setShowOnCalendar] = useState(!!category?.showOnCalendar);
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [subcats, setSubcats] = useState(() => normalizeSubcats(category?.subcats));
+  const [showGuide, setShowGuide] = useState(false);
   const [subIconPickerIdx, setSubIconPickerIdx] = useState(null); // 어떤 subcat 아이콘 피커가 열려있는지
 
   const updateSubcat = (idx, patch) => {
@@ -1203,7 +1306,9 @@ function CategoryEditor({ mode, category, isDefault, onSave, onClose }) {
       color: chosen.color,
       bg: chosen.bg,
       cap: cap === "" ? null : Number(cap),
-      subcats: cleanedSubcats
+      subcats: cleanedSubcats,
+      nwImpact,
+      showOnCalendar
     };
     onSave(patch);
   };
@@ -1285,16 +1390,83 @@ function CategoryEditor({ mode, category, isDefault, onSave, onClose }) {
           ))}
         </div>
 
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#7A6060", marginBottom: 6 }}>월 상한 (선택, 원)</div>
-        <input
-          type="number"
-          className="modal-input"
-          value={cap}
-          onChange={(e) => setCap(e.target.value)}
-          placeholder="예: 440000"
-          style={{ marginBottom: 2 }}
-        />
-        <div style={{ marginBottom: 12 }}><KrwHint value={cap} /></div>
+        {(() => {
+          const isExpenseLike = nwImpact === "expense" || nwImpact === "neutral";
+          const isGoalLike = nwImpact === "income" || nwImpact === "liquid_asset" || nwImpact === "locked_asset" || nwImpact === "debt_down";
+          if (nwImpact === "neutral") return null;  // 중립엔 의미 없음
+          return (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#7A6060", marginBottom: 6 }}>
+                {isGoalLike ? "월 목표 " : "월 상한 "}
+                <span style={{ color: "#B8A9A3", fontWeight: 500 }}>
+                  · {isGoalLike ? "이만큼 모으거나 갚고 싶어요" : "예산 한도"} (선택, 원)
+                </span>
+              </div>
+              <MoneyInput className="modal-input" value={cap} onChange={(e) => setCap(e.target.value)}
+                placeholder={isGoalLike ? "예: 500,000" : "예: 440,000"}
+                style={{ marginBottom: 2 }}
+              />
+              <div style={{ marginBottom: 12 }}><KrwHint value={cap} /></div>
+            </>
+          );
+        })()}
+
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#7A6060", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+          <span>자산 종류 <span style={{ color: "#B8A9A3", fontWeight: 500 }}>· 순자산 계산에 사용</span></span>
+          <AssetTypeHelpButton onClick={() => setShowGuide(true)} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 12 }}>
+          {[
+            { v: "expense",      label: "🔴 지출/소비",  hint: "식비·여가 (기본)" },
+            { v: "liquid_asset", label: "💧 유동 자산↑", hint: "예적금·비상금" },
+            { v: "locked_asset", label: "🔒 묶인 자산↑", hint: "투자·전세금" },
+            { v: "debt_down",    label: "📉 부채 감소",  hint: "대출·마통 상환" },
+            { v: "income",       label: "💰 수입",       hint: "월급·부수입" },
+            { v: "neutral",      label: "⚪ 중립",       hint: "계좌 간 이체" }
+          ].map((opt) => (
+            <button
+              key={opt.v}
+              type="button"
+              onClick={() => setNwImpact(opt.v)}
+              style={{
+                padding: "6px 8px",
+                background: nwImpact === opt.v ? "#FFE0E8" : "#fff",
+                border: `1px solid ${nwImpact === opt.v ? "#C08080" : "#EDE5E2"}`,
+                borderRadius: 8,
+                fontSize: 11,
+                fontWeight: nwImpact === opt.v ? 700 : 500,
+                color: nwImpact === opt.v ? "#A66060" : "#7A6060",
+                cursor: "pointer", textAlign: "left", fontFamily: "inherit"
+              }}
+            >
+              {opt.label}
+              <div style={{ fontSize: 9, color: "#B8A9A3", fontWeight: 400, marginTop: 1 }}>
+                {opt.hint}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* 캘린더 표시 옵션 */}
+        <label style={{
+          display: "flex", alignItems: "center", gap: 8, padding: "8px 10px",
+          background: showOnCalendar ? "#F0FAF5" : "#FAF5F3",
+          border: `1px solid ${showOnCalendar ? "#A4C5B0" : "#EDE5E2"}`,
+          borderRadius: 8, marginBottom: 12, cursor: "pointer", fontSize: 12, fontWeight: 600
+        }}>
+          <input
+            type="checkbox"
+            checked={showOnCalendar}
+            onChange={(e) => setShowOnCalendar(e.target.checked)}
+            style={{ width: 16, height: 16, accentColor: "#6BAF8D" }}
+          />
+          <div style={{ flex: 1 }}>
+            <div style={{ color: showOnCalendar ? "#3B7A5A" : "#7A6060" }}>📅 캘린더에 표시</div>
+            <div style={{ fontSize: 10, color: "#B8A9A3", fontWeight: 500, marginTop: 2 }}>
+              이 카테고리의 모든 기록이 캘린더 날짜 칸에 자동으로 보여요.
+            </div>
+          </div>
+        </label>
 
         <div style={{ fontSize: 11, fontWeight: 700, color: "#7A6060", marginBottom: 6 }}>
           세부 카테고리 <span style={{ color: "#B8A9A3", fontWeight: 500 }}>· 이름과 이모지 자유 설정</span>
@@ -1389,6 +1561,7 @@ function CategoryEditor({ mode, category, isDefault, onSave, onClose }) {
           </button>
         </div>
       </div>
+      {showGuide && <AssetTypeGuideModal onClose={() => setShowGuide(false)} />}
     </div>
   );
 }

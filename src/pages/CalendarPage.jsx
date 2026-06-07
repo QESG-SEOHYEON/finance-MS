@@ -11,6 +11,7 @@ import {
 import { calendarDateKey } from "../lib/attendance.js";
 import { COLORS, fmt, fmtWon, getDaysInMonth, getTasksForMonth } from "../schedule.js";
 import { aggregateMonth } from "../lib/aggregate.js";
+import { mergeCategories } from "../lib/expenseCategories.js";
 import TopBar from "../components/TopBar.jsx";
 import TaskEditor from "../components/TaskEditor.jsx";
 import BulkDebtModal from "../components/BulkDebtModal.jsx";
@@ -41,6 +42,34 @@ export default function CalendarPage() {
   const dbProfile = useLiveQuery(() => getUserProfile(), [], null);
   const attendanceDates = useLiveQuery(() => getAttendanceDates(), [], []);
   const attendanceSet = useMemo(() => new Set(attendanceDates), [attendanceDates]);
+
+  // 카테고리 (캘린더 expense 표시용)
+  const customCategoriesList = useLiveQuery(
+    () => db.settings.get("custom-categories").then((r) => r?.value || []), [], []
+  );
+  const categoryOverrides = useLiveQuery(
+    () => db.settings.get("category-overrides").then((r) => r?.value || {}), [], {}
+  );
+  const allCategories = useMemo(
+    () => mergeCategories(categoryOverrides || {}, customCategoriesList || []),
+    [categoryOverrides, customCategoriesList]
+  );
+
+  // 캘린더 노출 expense — 카테고리 showOnCalendar=true 거나 expense 자체에 showOnCalendar=true
+  const expensesOnCalendar = useMemo(() => {
+    const catShowMap = {};
+    for (const c of allCategories) catShowMap[c.key] = !!c.showOnCalendar;
+    return (expenses || []).filter((e) => e.showOnCalendar || catShowMap[e.category]);
+  }, [expenses, allCategories]);
+  const expensesByDay = useMemo(() => {
+    const map = {};
+    for (const e of expensesOnCalendar) {
+      const d = Number(String(e.date).slice(8, 10));
+      if (!map[d]) map[d] = [];
+      map[d].push(e);
+    }
+    return map;
+  }, [expensesOnCalendar]);
 
   useEffect(() => {
     (async () => {
@@ -332,6 +361,26 @@ export default function CalendarPage() {
                   </div>
                 );
               })}
+              {/* Expense 표시 (카테고리·개별 row의 showOnCalendar 따라) */}
+              {(expensesByDay[day] || []).map((e) => {
+                const cat = allCategories.find((c) => c.key === e.category);
+                return (
+                  <div
+                    key={`exp-${e.id}`}
+                    className="cal-event"
+                    style={{
+                      background: cat?.bg || "#FAF5F3",
+                      color: cat?.color || "#7A6060",
+                      borderLeft: `3px dashed ${cat?.color || "#C0A07E"}`
+                    }}
+                    title={`${cat?.label || e.category} · ${e.subcategory || ""} · ${fmtWon(e.amount)}`}
+                  >
+                    <span className="cal-event-icon">{cat?.icon || "💸"}</span>
+                    <span className="cal-event-label">{e.memo || e.subcategory || cat?.label || "지출"}</span>
+                    <span className="cal-event-amt">{fmt(e.amount)}</span>
+                  </div>
+                );
+              })}
             </div>
           );
         })}
@@ -493,6 +542,7 @@ export default function CalendarPage() {
           task={editTask.task}
           mode={editTask.mode}
           daysInMonth={daysInMonth}
+          allCategories={allCategories}
           actual={editTask.task?.id ? actuals[editTask.task.id] : undefined}
           checked={editTask.task?.id ? !!checks[editTask.task.id] : false}
           onSave={async (patch) => {

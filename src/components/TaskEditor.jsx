@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { fmt, fmtWon } from "../schedule.js";
+import MoneyInput from "./MoneyInput.jsx";
+import AssetTypeGuideModal, { AssetTypeHelpButton } from "./AssetTypeGuide.jsx";
 
 const TYPES = [
   { key: "income", label: "수입" },
@@ -10,35 +12,48 @@ const TYPES = [
   { key: "variable", label: "기타 변동" }
 ];
 
+// 카테고리 nwImpact → calendar task type (캘린더 색상/그룹용)
+const IMPACT_TO_TASK_TYPE = {
+  income: "income",
+  liquid_asset: "income",
+  locked_asset: "invest",
+  debt_down: "debt",
+  expense: "general",
+  neutral: "general"
+};
+
+const IMPACT_LABEL = {
+  income: "💰 수입",
+  liquid_asset: "💧 유동 자산↑",
+  locked_asset: "🔒 묶인 자산↑",
+  debt_down: "⚡ 부채 감소",
+  expense: "🔴 지출/소비",
+  neutral: "⚪ 중립"
+};
+
 const ICON_PRESETS = [
-  // 금융
   "💰", "💳", "💵", "💸", "🏦", "📈", "📊", "📉", "⚡", "🔑", "💼",
-  // 음식/카페
   "☕", "🍰", "🧁", "🍪", "🍩", "🍦", "🍓", "🍑", "🍒", "🍵", "🥐", "🍷", "🥂",
-  // 자연/꽃
   "🌸", "🌷", "🌹", "🌺", "🌻", "🌼", "🌿", "🍀", "🌱", "🦋", "🌙", "☁️", "⭐", "✨", "🌟", "💫", "🌈",
-  // 동물
   "🐰", "🐻", "🐱", "🐶", "🦊", "🐼", "🐨", "🦢",
-  // 선물/이벤트/하트
   "🎀", "🎁", "🎉", "🎈", "💐", "🕯️", "💌", "💝", "💖", "💕", "💞", "💓", "❤️",
-  // 쇼핑/자기관리
   "🛍️", "👗", "👜", "👠", "💄", "💅", "💎", "🎨", "🪞",
-  // 홈/일상
   "🏡", "🛁", "📚", "📝", "✏️", "📌", "📍", "📎", "🔖",
-  // 기타
   "🌏", "✈️", "🎵", "🎬", "🏋️", "💊", "🩺"
 ];
 
 // mode: "edit" | "create" | "amount-only"
-export default function TaskEditor({ task, actual, checked = false, mode = "edit", daysInMonth, onSave, onDelete, onClose }) {
+export default function TaskEditor({ task, actual, checked = false, mode = "edit", daysInMonth, allCategories = [], onSave, onDelete, onClose }) {
   const isCreate = mode === "create";
   const isAmountOnly = mode === "amount-only";
   const [label, setLabel] = useState(task?.label || "");
   const [day, setDay] = useState(task?.day || 1);
   const [type, setType] = useState(task?.type || "variable");
+  const [categoryKey, setCategoryKey] = useState(task?.category || "");
   const [icon, setIcon] = useState(task?.icon || "📌");
   const [isDone, setIsDone] = useState(checked);
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const [amount, setAmount] = useState(
     isCreate ? "" : (actual ?? Math.abs(task?.amount ?? 0))
   );
@@ -48,26 +63,35 @@ export default function TaskEditor({ task, actual, checked = false, mode = "edit
       setLabel(task.label || "");
       setDay(task.day || 1);
       setType(task.type || "variable");
+      setCategoryKey(task.category || "");
       setIcon(task.icon || "📌");
       if (!isCreate) setAmount(actual ?? Math.abs(task.amount ?? 0));
     }
     setIsDone(checked);
   }, [task?.id, checked]);
 
+  const selectedCat = allCategories.find((c) => c.key === categoryKey);
+  const catImpact = selectedCat?.nwImpact;
+  // 카테고리 선택 시 task type 자동 매핑
+  const effectiveType = catImpact ? (IMPACT_TO_TASK_TYPE[catImpact] || type) : type;
+
   const planned = task ? Math.abs(task.amount) : 0;
   const diff = amount !== "" && !isAmountOnly ? 0 : Number(amount) - planned;
 
   const handleSave = () => {
     const amt = amount === "" ? 0 : Number(amount);
-    const signed = type === "income" ? Math.abs(amt) : -Math.abs(amt);
+    const signedAbs = Math.abs(amt);
+    // 수입은 양수, 그 외는 음수로 저장 (캘린더 task amount 컨벤션)
+    const signed = effectiveType === "income" ? signedAbs : -signedAbs;
     if (isAmountOnly) {
       onSave({ actualAmount: amt === 0 ? null : amt });
     } else {
       onSave({
         label: label.trim() || "새 항목",
         day: Number(day),
-        type,
-        icon,
+        type: effectiveType,
+        category: categoryKey || undefined,
+        icon: selectedCat?.icon || icon,
         amount: signed,
         completed: isDone
       });
@@ -84,7 +108,7 @@ export default function TaskEditor({ task, actual, checked = false, mode = "edit
         <div className="modal-sub">
           {isAmountOnly
             ? `예상 ${fmtWon(task.amount)} · 실제 금액 입력`
-            : "제목, 날짜, 유형, 금액을 자유롭게 수정하세요"}
+            : "제목, 카테고리/자산 종류, 날짜, 금액"}
         </div>
 
         {!isAmountOnly && (
@@ -118,7 +142,7 @@ export default function TaskEditor({ task, actual, checked = false, mode = "edit
                 }}
                 title="이모지 선택"
               >
-                {icon}
+                {selectedCat?.icon || icon}
               </button>
               <input
                 className="modal-input"
@@ -143,18 +167,11 @@ export default function TaskEditor({ task, actual, checked = false, mode = "edit
                     style={{ flex: 1, fontSize: 14, padding: "8px 10px" }}
                     maxLength={4}
                   />
-                  <button
-                    type="button"
-                    className="btn btn-sm"
-                    onClick={() => setShowIconPicker(false)}
-                  >닫기</button>
+                  <button type="button" className="btn btn-sm" onClick={() => setShowIconPicker(false)}>닫기</button>
                 </div>
                 <div style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(10, 1fr)",
-                  gap: 4,
-                  maxHeight: 200,
-                  overflowY: "auto"
+                  display: "grid", gridTemplateColumns: "repeat(10, 1fr)", gap: 4,
+                  maxHeight: 200, overflowY: "auto"
                 }}>
                   {ICON_PRESETS.map((ic) => (
                     <button
@@ -168,23 +185,59 @@ export default function TaskEditor({ task, actual, checked = false, mode = "edit
                         cursor: "pointer", padding: 0,
                         display: "flex", alignItems: "center", justifyContent: "center"
                       }}
-                    >
-                      {ic}
-                    </button>
+                    >{ic}</button>
                   ))}
                 </div>
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+            {/* 카테고리 (선택) */}
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#7A6060", marginBottom: 4 }}>
+                카테고리 (선택)
+              </div>
               <select
                 className="modal-input"
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                style={{ flex: 1 }}
+                value={categoryKey}
+                onChange={(e) => setCategoryKey(e.target.value)}
               >
-                {TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+                <option value="">(선택 안 함 — 직접 자산 종류 지정)</option>
+                {allCategories.map((c) => (
+                  <option key={c.key} value={c.key}>{c.icon} {c.label}</option>
+                ))}
               </select>
+            </div>
+
+            {/* 자산 종류 — 카테고리에 있으면 자동, 없으면 직접 선택 */}
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#7A6060", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                <span>자산 종류</span>
+                <AssetTypeHelpButton onClick={() => setShowGuide(true)} />
+              </div>
+              {catImpact ? (
+                <div style={{
+                  padding: "8px 10px", background: "#FAF5F3",
+                  border: "1px solid #EDE5E2", borderRadius: 8,
+                  fontSize: 12, color: "#7A6060"
+                }}>
+                  이미 자산 종류가 정해진 카테고리예요 — <strong style={{ color: "#A66060" }}>{IMPACT_LABEL[catImpact] || catImpact}</strong>
+                </div>
+              ) : (
+                <select
+                  className="modal-input"
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                >
+                  {TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+                </select>
+              )}
+            </div>
+
+            {/* 날짜 */}
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#7A6060", marginBottom: 4 }}>
+                일 (1 ~ {daysInMonth || 31})
+              </div>
               <input
                 type="number"
                 className="modal-input"
@@ -193,21 +246,22 @@ export default function TaskEditor({ task, actual, checked = false, mode = "edit
                 max={daysInMonth || 31}
                 value={day}
                 onChange={(e) => setDay(e.target.value)}
-                style={{ width: 80 }}
+                style={{ width: 100 }}
               />
             </div>
           </>
         )}
 
-        <input
-          type="number"
-          inputMode="numeric"
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#7A6060", marginBottom: 4 }}>
+          금액 (양수)
+        </div>
+        <MoneyInput
           className="modal-input"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
           autoFocus
-          placeholder="금액 (양수 입력)"
+          placeholder="금액"
         />
 
         {isAmountOnly && amount !== "" && !Number.isNaN(Number(amount)) && diff !== 0 && (
@@ -225,24 +279,22 @@ export default function TaskEditor({ task, actual, checked = false, mode = "edit
               className="btn btn-sm"
               style={{ marginRight: "auto", color: "#C06060" }}
               onClick={() => { onDelete(); onClose(); }}
-            >
-              삭제
-            </button>
+            >삭제</button>
           )}
           {isAmountOnly && actual !== undefined && actual !== null && (
             <button
               className="btn btn-sm"
               style={{ marginRight: "auto" }}
               onClick={() => { onSave({ actualAmount: null }); onClose(); }}
-            >
-              초기화
-            </button>
+            >초기화</button>
           )}
           <button className="btn btn-sm" onClick={onClose}>취소</button>
           <button className="btn btn-primary btn-sm" onClick={handleSave}>
             {isCreate ? "추가" : "저장"}
           </button>
         </div>
+
+        {showGuide && <AssetTypeGuideModal onClose={() => setShowGuide(false)} />}
       </div>
     </div>
   );

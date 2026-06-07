@@ -1,13 +1,11 @@
-// 출석체크: 한국시간 정오를 하루 경계로 본다.
-// - KST 11:59에 들어오면 어제(KST) 자가 "오늘의 출석" 대상.
-// - KST 12:00을 지나면 새 "오늘"로 갱신 → 모달이 다시 뜬다.
+// 출석체크: KST 달력 날짜를 그대로 저장. 모달 재개 타이밍만 정오 기준.
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-const NOON_SHIFT_MS = 12 * 60 * 60 * 1000;
 
 export function attendanceKeyForNow(now = new Date()) {
-  const shifted = new Date(now.getTime() + KST_OFFSET_MS - NOON_SHIFT_MS);
-  return shifted.toISOString().slice(0, 10);
+  // KST 달력 날짜 (목요일 오전에 누르면 그 목요일 날짜로 저장)
+  const kst = new Date(now.getTime() + KST_OFFSET_MS);
+  return kst.toISOString().slice(0, 10);
 }
 
 // 캘린더 셀(특정 일자)이 출석된 날인지 비교할 때 쓰는 키.

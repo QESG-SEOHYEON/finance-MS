@@ -2,7 +2,8 @@ import { db, calcDebtPaidBefore, getUserProfile, getExpectedIncome } from "../db
 import { getTasksForMonth, getDaysInMonth } from "../schedule.js";
 
 // 단일 월 집계: 고정 스케줄(실제/예상) + 변동지출(expenses)
-export function aggregateMonth(tasks, checks, actuals, expenses) {
+// catImpactByKey: { [categoryKey]: nwImpact } — 없으면 expense fallback
+export function aggregateMonth(tasks, checks, actuals, expenses, catImpactByKey = {}) {
   const result = {
     income: 0, incomeActual: 0,
     fixed: 0, fixedActual: 0,
@@ -51,9 +52,18 @@ export function aggregateMonth(tasks, checks, actuals, expenses) {
     }
   }
 
+  // 변동지출 — 자산 종류가 "지출"인 카테고리만 variable 합산.
+  // 수입 카테고리는 income 으로 라우팅. 자산/부채/중립은 차트 미반영.
   for (const e of expenses || []) {
-    result.variable += e.amount;
-    result.hasAnyData = true;
+    const impact = catImpactByKey[e.category] || "expense";
+    if (impact === "expense") {
+      result.variable += e.amount;
+      result.hasAnyData = true;
+    } else if (impact === "income") {
+      result.income += e.amount;
+      result.incomeActual += e.amount;
+      result.hasAnyData = true;
+    }
   }
 
   result.totalExpense = result.fixed + result.invest + result.debt + result.general + result.variable;
@@ -81,6 +91,7 @@ export async function aggregateRange(startYear, startMonth, endYear, endMonth) {
     const match = s.id.match(/^expected-income-(\d+)-(\d+)$/);
     if (match) expectedIncomeByMonth[`${Number(match[1])}-${Number(match[2])}`] = s.value || {};
   }
+  const catImpactByKey = buildCatImpactByKey(allSettings);
 
   const months = [];
   let y = startYear, m = startMonth;
@@ -102,7 +113,7 @@ export async function aggregateRange(startYear, startMonth, endYear, endMonth) {
     const prefix = `${y}-${mm}`;
     const monthExpenses = allExpenses.filter((e) => e.date && e.date.startsWith(prefix));
 
-    const agg = aggregateMonth(tasks, row.checks || {}, row.actualAmounts || {}, monthExpenses);
+    const agg = aggregateMonth(tasks, row.checks || {}, row.actualAmounts || {}, monthExpenses, catImpactByKey);
 
     months.push({
       key: monthKey,
@@ -246,4 +257,98 @@ export async function aggregateWeeklyRange(startYear, startMonth, endYear, endMo
   }
 
   return weeks;
+}
+
+// ---------- v2: 카테고리 자산 종류 맵 / 연 단위 / 일 단위 집계 ----------
+
+// settings 배열에서 category-overrides + custom-categories 의 nwImpact 맵 생성
+function buildCatImpactByKey(allSettings) {
+  const overridesRow = allSettings.find((s) => s.id === "category-overrides");
+  const customRow = allSettings.find((s) => s.id === "custom-categories");
+  const overrides = overridesRow?.value || {};
+  const customs = Array.isArray(customRow?.value) ? customRow.value : [];
+  const map = {
+    food: overrides.food?.nwImpact || "expense",
+    leisure: overrides.leisure?.nwImpact || "expense",
+    other: overrides.other?.nwImpact || "expense"
+  };
+  for (const c of customs) map[c.key] = c.nwImpact || "expense";
+  return map;
+}
+
+// 월별 집계 결과를 연 단위로 합산
+export function rollupByYear(monthData) {
+  const map = new Map();
+  const numericKeys = [
+    "income", "incomeActual", "fixed", "fixedActual",
+    "invest", "investActual", "debt", "debtActual",
+    "general", "generalActual", "variable",
+    "totalExpense", "totalExpenseActual",
+    "savings", "savingsActual"
+  ];
+  for (const d of monthData) {
+    let cur = map.get(d.year);
+    if (!cur) {
+      cur = { key: `${d.year}`, label: `${d.year}`, year: d.year, month: null };
+      for (const k of numericKeys) cur[k] = 0;
+      map.set(d.year, cur);
+    }
+    for (const k of numericKeys) cur[k] += d[k] || 0;
+  }
+  return Array.from(map.values()).sort((a, b) => a.year - b.year);
+}
+
+// 일 단위 집계 (range 안의 모든 일자 펼치기)
+export async function aggregateDays(startYear, startMonth, endYear, endMonth) {
+  const [profile, allMonthly, allExpenses, allSchedules, allSettings] = await Promise.all([
+    getUserProfile(),
+    db.monthly_status.toArray(),
+    db.expenses.toArray(),
+    db.month_schedule.toArray(),
+    db.settings.toArray()
+  ]);
+
+  const expectedIncomeByMonth = {};
+  for (const s of allSettings) {
+    const match = s.id.match(/^expected-income-(\d+)-(\d+)$/);
+    if (match) expectedIncomeByMonth[`${Number(match[1])}-${Number(match[2])}`] = s.value || {};
+  }
+  const catImpactByKey = buildCatImpactByKey(allSettings);
+
+  const out = [];
+  let y = startYear, m = startMonth;
+  while (y < endYear || (y === endYear && m <= endMonth)) {
+    const monthKey = `${y}-${m}`;
+    const row = allMonthly.find((r) => r.id === monthKey) || { checks: {}, actualAmounts: {} };
+    const schedule = allSchedules.find((s) => s.id === monthKey);
+    const debtPaidBefore = calcDebtPaidBefore(allMonthly, profile, y, m);
+    const tasks = getTasksForMonth(y, m, {
+      profile,
+      customSchedule: schedule,
+      expectedIncomeThisMonth: expectedIncomeByMonth[monthKey] || {},
+      debtPaidBefore
+    });
+    const checks = row.checks || {};
+    const actuals = row.actualAmounts || {};
+    const mm = String(m).padStart(2, "0");
+    const monthExpenses = allExpenses.filter((e) => e.date && e.date.startsWith(`${y}-${mm}`));
+    const dim = new Date(y, m, 0).getDate();
+
+    for (let d = 1; d <= dim; d++) {
+      const dd = String(d).padStart(2, "0");
+      const dateStr = `${y}-${mm}-${dd}`;
+      const dayTasks = tasks.filter((t) => t.day === d);
+      const dayExpenses = monthExpenses.filter((e) => e.date === dateStr);
+      const agg = aggregateMonth(dayTasks, checks, actuals, dayExpenses, catImpactByKey);
+      out.push({
+        key: dateStr,
+        label: `${m}/${d}`,
+        year: y, month: m, day: d,
+        ...agg
+      });
+    }
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+  return out;
 }

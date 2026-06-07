@@ -14,8 +14,7 @@ export default defineConfig({
   // 보다 넓은 브라우저 호환 (Naver Whale, Edge, Safari, 구형 Chrome 포함)
   // 한국 Whale은 Chromium 기반이지만 메이저 버전이 Chrome보다 약간 늦음.
   build: {
-    target: ["chrome87", "edge88", "firefox78", "safari14"],
-    sourcemap: true   // 임시 — 디버깅을 위해 sourcemap 노출
+    target: ["chrome87", "edge88", "firefox78", "safari14"]
   },
   plugins: [
     react(),

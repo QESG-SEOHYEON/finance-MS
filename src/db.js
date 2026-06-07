@@ -463,3 +463,285 @@ export async function setCashBalance(year, month, amount) {
     });
   }
 }
+
+// =====================================================================
+// v2: 순자산 자동 계산 / 반복 일정 / orphan 복원 / 자산 마법사 / 업데이트 안내
+// =====================================================================
+
+// ---------- 순자산 모드 / 초기 유동자산 ----------
+export async function getNetWorthMode() {
+  const row = await db.settings.get("netWorth-mode");
+  return row?.value || "manual";
+}
+export async function setNetWorthMode(mode) {
+  await db.settings.put({ id: "netWorth-mode", value: mode });
+}
+export async function getInitialLiquid() {
+  const row = await db.settings.get("initialLiquid");
+  return Number(row?.value) || 0;
+}
+export async function setInitialLiquid(value) {
+  await db.settings.put({ id: "initialLiquid", value: Number(value) });
+}
+
+// ---------- 자산 마법사 1회성 완료 플래그 ----------
+export async function isAssetSetupDone() {
+  const row = await db.settings.get("asset-setup-done");
+  return !!row?.value;
+}
+export async function markAssetSetupDone() {
+  await db.settings.put({ id: "asset-setup-done", value: true });
+}
+
+// ---------- 업데이트 안내(WhatsNew) 1회성 완료 플래그 ----------
+export async function isWhatsNewSeen(version) {
+  const row = await db.settings.get(`whats-new-${version}-seen`);
+  return !!row?.value;
+}
+export async function markWhatsNewSeen(version) {
+  await db.settings.put({ id: `whats-new-${version}-seen`, value: true });
+}
+export async function clearWhatsNewSeen(version) {
+  await db.settings.delete(`whats-new-${version}-seen`);
+}
+
+// 커스텀 카테고리에 자산 종류(nwImpact) 일괄 부여
+export async function updateCustomCategoryImpacts(impactMap) {
+  const row = await db.settings.get("custom-categories");
+  const list = Array.isArray(row?.value) ? row.value : [];
+  const next = list.map((c) => impactMap[c.key] ? { ...c, nwImpact: impactMap[c.key] } : c);
+  await db.settings.put({ id: "custom-categories", value: next });
+}
+
+// ---------- 반복 일정 (모든 task type 통합 · 월/주/격주 주기) ----------
+export async function getRecurringTasks() {
+  const row = await db.settings.get("recurring-tasks");
+  return Array.isArray(row?.value) ? row.value : [];
+}
+export async function setRecurringTasks(items) {
+  await db.settings.put({ id: "recurring-tasks", value: items });
+}
+
+function isoWeekOf(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+function computeRecurringDays(r, year, month, daysInMonth) {
+  if (r.frequency === "monthly") {
+    return [Math.min(Number(r.dayOfMonth) || 1, daysInMonth)];
+  }
+  const wd = Number(r.weekday);
+  if (Number.isNaN(wd)) return [];
+  const days = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    if (new Date(year, month - 1, d).getDay() === wd) days.push(d);
+  }
+  if (r.frequency === "weekly") return days;
+  if (r.frequency === "biweekly") {
+    const offset = Number(r.weekOffset) || 0;
+    return days.filter((d) => (isoWeekOf(new Date(year, month - 1, d)) % 2) === offset);
+  }
+  return [];
+}
+
+// 기존 recurring-expenses → 신규 recurring-tasks 로 마이그레이션 (1회 실행)
+export async function migrateRecurringExpensesToTasks() {
+  const flagRow = await db.settings.get("recurring-migrated");
+  if (flagRow?.value) return { migrated: 0, already: true };
+
+  const legacyRow = await db.settings.get("recurring-expenses");
+  const legacyItems = Array.isArray(legacyRow?.value) ? legacyRow.value : [];
+  if (!legacyItems.length) {
+    await db.settings.put({ id: "recurring-migrated", value: true });
+    return { migrated: 0, already: false };
+  }
+
+  const existingTasks = await getRecurringTasks();
+  const migrated = legacyItems.map((item) => ({
+    id: `rt-mig-${item.id || Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+    label: item.memo || `반복 지출${item.subcategory ? " · " + item.subcategory : ""}`,
+    type: "fixed",
+    category: item.category || "",
+    subcategory: item.subcategory || "",
+    amount: Math.abs(Number(item.amount) || 0),
+    memo: item.memo || "",
+    frequency: "monthly",
+    dayOfMonth: Number(item.dayOfMonth) || 1,
+    _migratedFrom: "recurring-expenses"
+  }));
+  await setRecurringTasks([...existingTasks, ...migrated]);
+  await db.settings.delete("recurring-expenses");
+  await db.settings.put({ id: "recurring-migrated", value: true });
+  return { migrated: migrated.length, already: false };
+}
+
+export async function applyRecurringTasksForMonth(year, month) {
+  const items = await getRecurringTasks();
+  if (!items.length) return 0;
+  const schedule = await getMonthSchedule(year, month);
+  const added = Array.isArray(schedule?.added) ? [...schedule.added] : [];
+  const existingIds = new Set(added.map((t) => t.id));
+  const daysInMonth = new Date(year, month, 0).getDate();
+  let count = 0;
+
+  for (const r of items) {
+    const days = computeRecurringDays(r, year, month, daysInMonth);
+    for (const day of days) {
+      const id = `recur-${r.id}-${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      if (existingIds.has(id)) continue;
+      const positiveTypes = new Set(["income"]);
+      const negativeTypes = new Set(["fixed", "invest", "debt", "general"]);
+      const absAmount = Math.abs(Number(r.amount) || 0);
+      const signed = positiveTypes.has(r.type) ? absAmount : (negativeTypes.has(r.type) ? -absAmount : absAmount);
+      added.push({
+        id,
+        label: r.label || "(반복 일정)",
+        type: r.type || "general",
+        category: r.category || "",
+        subcategory: r.subcategory || "",
+        amount: signed,
+        day,
+        icon: r.icon || (r.type === "income" ? "💰" : r.type === "invest" ? "📈" : r.type === "debt" ? "⚡" : "📌"),
+        memo: r.memo || "",
+        isRecurring: true,
+        _recurringId: r.id
+      });
+      existingIds.add(id);
+      count++;
+    }
+  }
+  if (count > 0) await setMonthSchedule(year, month, { added });
+  return count;
+}
+
+// ---------- Orphaned task references — 스케줄 변경 후 데이터 보호 ----------
+// 데이터에 남아있지만 현재 코드 기준으로 그려지지 않는 task ID를 찾음.
+export async function getOrphanedTaskRefs() {
+  const { getTasksForMonth } = await import("./schedule.js");
+  const allMonthly = await db.monthly_status.toArray();
+  const allSchedules = await db.month_schedule.toArray();
+  const settingsAll = await db.settings.toArray();
+  const profile = await getUserProfile();
+  const expectedIncomeByMonth = {};
+  for (const s of settingsAll) {
+    const mt = s.id && s.id.match(/^expected-income-(\d+)-(\d+)$/);
+    if (mt) expectedIncomeByMonth[`${Number(mt[1])}-${Number(mt[2])}`] = s.value || {};
+  }
+  const overridesMap = {};
+  for (const s of allSchedules) overridesMap[s.id] = s;
+
+  // 데이터가 있는 모든 월에 대해 현재 코드 기준 정상 task ID를 모음
+  const validIds = new Set();
+  for (const m of allMonthly) {
+    const [y, mo] = String(m.id).split("-").map(Number);
+    if (!y || !mo) continue;
+    const debtPaidBefore = calcDebtPaidBefore(allMonthly, profile, y, mo);
+    const tasks = getTasksForMonth(y, mo, {
+      profile,
+      customSchedule: overridesMap[m.id],
+      expectedIncomeThisMonth: expectedIncomeByMonth[m.id] || {},
+      debtPaidBefore
+    });
+    for (const t of tasks) validIds.add(t.id);
+  }
+  for (const s of allSchedules) {
+    for (const t of (s.added || [])) validIds.add(t.id);
+  }
+
+  const orphans = new Map();
+  const touch = (id, monthId) => {
+    if (!orphans.has(id)) orphans.set(id, { id, monthIds: [], actualSum: 0, hasCheck: false, hasOverride: false, override: null });
+    const o = orphans.get(id);
+    if (monthId && !o.monthIds.includes(monthId)) o.monthIds.push(monthId);
+  };
+  for (const m of allMonthly) {
+    for (const id in (m.actualAmounts || {})) {
+      if (validIds.has(id)) continue;
+      touch(id, m.id);
+      orphans.get(id).actualSum += Math.abs(Number(m.actualAmounts[id]) || 0);
+    }
+    for (const id in (m.checks || {})) {
+      if (!m.checks[id] || validIds.has(id)) continue;
+      touch(id, m.id);
+      orphans.get(id).hasCheck = true;
+    }
+  }
+  for (const s of allSchedules) {
+    for (const id in (s.overrides || {})) {
+      if (validIds.has(id)) continue;
+      touch(id, s.id);
+      orphans.get(id).hasOverride = true;
+      orphans.get(id).override = s.overrides[id];
+    }
+  }
+  return Array.from(orphans.values());
+}
+
+function parseTaskId(id) {
+  const parts = String(id).split("-");
+  if (parts.length < 4) return null;
+  const [y, mo, day, ...labelParts] = parts;
+  const yy = Number(y), mm = Number(mo), dd = Number(day);
+  if (!yy || !mm || !dd) return null;
+  return { year: yy, month: mm, day: dd, label: labelParts.join("-") };
+}
+
+// orphan을 user-added task로 복원 — 데이터 있는 각 월의 month_schedule.added에 task 추가
+export async function restoreOrphanTask(orphan, customLabel) {
+  const parsed = parseTaskId(orphan.id);
+  if (!parsed) return false;
+  const label = customLabel || orphan.override?.label || parsed.label || "복원된 항목";
+  const baseAmount = orphan.override?.amount ?? 0;
+  const type = orphan.override?.type || "general";
+  const icon = orphan.override?.icon || "📌";
+
+  for (const monthId of orphan.monthIds) {
+    if (!/^\d+-\d+$/.test(monthId)) continue;
+    const sched = await db.month_schedule.get(monthId) || { id: monthId, overrides: {}, hidden: [], added: [] };
+    const added = Array.isArray(sched.added) ? [...sched.added] : [];
+    if (added.find((t) => t.id === orphan.id)) continue;
+    added.push({
+      id: orphan.id,
+      label, type, icon,
+      day: parsed.day,
+      amount: baseAmount,
+      category: orphan.override?.category,
+      isCustom: true,
+      _restored: true
+    });
+    await db.month_schedule.put({ ...sched, id: monthId, added });
+  }
+  return true;
+}
+
+// orphan 데이터 삭제
+export async function deleteOrphanData(orphan) {
+  const allMonthly = await db.monthly_status.toArray();
+  for (const m of allMonthly) {
+    let changed = false;
+    if (m.actualAmounts && m.actualAmounts[orphan.id] !== undefined) {
+      const nextActuals = { ...m.actualAmounts };
+      delete nextActuals[orphan.id];
+      m.actualAmounts = nextActuals;
+      changed = true;
+    }
+    if (m.checks && m.checks[orphan.id] !== undefined) {
+      const nextChecks = { ...m.checks };
+      delete nextChecks[orphan.id];
+      m.checks = nextChecks;
+      changed = true;
+    }
+    if (changed) await db.monthly_status.put(m);
+  }
+  const allSchedules = await db.month_schedule.toArray();
+  for (const s of allSchedules) {
+    if (s.overrides && s.overrides[orphan.id]) {
+      const nextOv = { ...s.overrides };
+      delete nextOv[orphan.id];
+      await db.month_schedule.put({ ...s, overrides: nextOv });
+    }
+  }
+}
