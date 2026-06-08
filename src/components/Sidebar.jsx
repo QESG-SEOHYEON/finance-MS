@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { PROFILE, db, getUserProfile, mergeProfile, resetAllData } from "../db.js";
+import { PROFILE, db, getUserProfile, mergeProfile, resetAllData, exportAllData, importAllData } from "../db.js";
 import { currentPhaseFrom, getUserPhases } from "../lib/phase.js";
 import AvatarPickerModal from "./AvatarPickerModal.jsx";
 
@@ -18,6 +18,45 @@ export default function Sidebar({ page, onNavigate, onOpenProfileEdit }) {
   const userPhases = useLiveQuery(() => getUserPhases(), [], []);
   const phase = currentPhaseFrom(userPhases, today);
   const [avatarModal, setAvatarModal] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef(null);
+
+  const handleExport = async () => {
+    setBusy(true);
+    try {
+      const payload = await exportAllData();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const d = new Date();
+      const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+      a.href = url;
+      a.download = `자산관리-백업-${stamp}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert("백업 실패: " + (e?.message || e));
+    }
+    setBusy(false);
+  };
+
+  const handleImportFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // 같은 파일 재선택 허용
+    if (!file) return;
+    if (!confirm("불러오면 이 기기의 현재 데이터가 백업 파일 내용으로 교체됩니다.\n(백업을 먼저 받아두는 걸 권장)\n\n계속할까요?")) return;
+    setBusy(true);
+    try {
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      const r = await importAllData(payload, { replace: true });
+      alert(`복원 완료! (${r.tables}개 테이블)\n새로고침할게요.`);
+      location.reload();
+    } catch (err) {
+      alert("복원 실패: " + (err?.message || err));
+      setBusy(false);
+    }
+  };
 
   const dbProfile = useLiveQuery(() => getUserProfile(), [], null);
   const p = mergeProfile(dbProfile);
@@ -126,6 +165,39 @@ export default function Sidebar({ page, onNavigate, onOpenProfileEdit }) {
           ⚙️ 프로필 편집
         </button>
       )}
+
+      {/* 백업 / 복원 (기기 이전용) */}
+      <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+        <button
+          onClick={handleExport}
+          disabled={busy}
+          style={{
+            flex: 1, padding: "8px 10px", borderRadius: 8,
+            background: "rgba(255,255,255,0.6)", border: "1px solid #EDE5E2",
+            color: "#7A6060", fontSize: 11, fontWeight: 600,
+            cursor: busy ? "wait" : "pointer", fontFamily: "inherit"
+          }}
+          title="모든 데이터를 JSON 파일로 저장 (다른 기기로 이전)"
+        >⬇️ 백업</button>
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={busy}
+          style={{
+            flex: 1, padding: "8px 10px", borderRadius: 8,
+            background: "rgba(255,255,255,0.6)", border: "1px solid #EDE5E2",
+            color: "#7A6060", fontSize: 11, fontWeight: 600,
+            cursor: busy ? "wait" : "pointer", fontFamily: "inherit"
+          }}
+          title="백업 파일을 불러와 이 기기에 복원 (현재 데이터 교체)"
+        >⬆️ 복원</button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/json,.json"
+          onChange={handleImportFile}
+          style={{ display: "none" }}
+        />
+      </div>
 
       <button
         onClick={() => {

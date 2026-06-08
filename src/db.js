@@ -365,6 +365,44 @@ export async function resetAllData() {
   location.reload();
 }
 
+// ---------- 백업 / 복원 (기기 이전용 JSON) ----------
+const BACKUP_TABLES = [
+  "monthly_status", "settings", "expenses", "assets",
+  "month_schedule", "mentor", "mentor_daily", "mentor_history"
+];
+
+// 모든 테이블을 JSON 객체로 덤프
+export async function exportAllData() {
+  const data = {};
+  for (const t of BACKUP_TABLES) {
+    try { data[t] = await db[t].toArray(); }
+    catch { data[t] = []; }
+  }
+  return {
+    app: "finance-calendar",
+    schemaVersion: 4,
+    exportedAt: new Date().toISOString(),
+    data
+  };
+}
+
+// 백업 JSON 을 DB 에 복원. 기본은 전체 교체(replace) — 기기 이전 시 그대로 옮김.
+export async function importAllData(payload, { replace = true } = {}) {
+  if (!payload || payload.app !== "finance-calendar" || !payload.data || typeof payload.data !== "object") {
+    throw new Error("올바른 백업 파일이 아니에요.");
+  }
+  const data = payload.data;
+  const tables = BACKUP_TABLES.filter((t) => db[t]); // 존재하는 테이블만
+  await db.transaction("rw", tables.map((t) => db[t]), async () => {
+    for (const t of tables) {
+      const rows = Array.isArray(data[t]) ? data[t] : [];
+      if (replace) await db[t].clear();
+      if (rows.length) await db[t].bulkPut(rows);
+    }
+  });
+  return { tables: tables.length };
+}
+
 // 효과적 프로필: DB 값 우선, 없으면 PROFILE 기본값
 export function mergeProfile(dbProfile) {
   return { ...PROFILE, ...(dbProfile || {}) };
