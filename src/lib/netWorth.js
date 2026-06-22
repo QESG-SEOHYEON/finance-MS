@@ -1,42 +1,49 @@
-// 순자산 자동 계산.
-// 카테고리/Task type별 부호 + 유동성 분류 → 총자산 / 즉시 인출 / 묶인 자산 분리.
+// 순자산 자동 계산 (이체식 / double-entry, 4버킷).
+//   순자산(total) = 현금(liquid) + 투자(invested) − 부채(debt)
+// 각 거래를 (총자산Δ, 현금Δ, 부채Δ) 3축으로 기록. 투자Δ = 총자산Δ − 현금Δ + 부채Δ.
 
 import { db, calcDebtPaidBefore, getUserProfile } from "../db.js";
 import { getTasksForMonth } from "../schedule.js";
 
 // 캘린더 task type별 매핑 (schedule.js의 5가지 type)
-// invest는 단순 이동 관점으로 0 (현금→투자 위치만 바뀐 것으로 봄)
 export const TASK_TYPE_META = {
-  income:  { sign: +1, liquid: true },
-  fixed:   { sign: -1, liquid: true },
-  invest:  { sign:  0, liquid: false },  // 자산 형태만 바뀜 (현금↓ 투자↑)
-  debt:    { sign: +1, liquid: false },  // 부채 감소 → 순자산 +
-  general: { sign: -1, liquid: true }
+  income:  { totalSign: +1, liquidSign: +1, debtSign:  0, label: "수입" },
+  fixed:   { totalSign: -1, liquidSign: -1, debtSign:  0, label: "고정지출" },
+  invest:  { totalSign:  0, liquidSign: -1, debtSign:  0, label: "투자(묶인 자산)" },
+  debt:    { totalSign:  0, liquidSign: -1, debtSign: -1, label: "부채 상환" },
+  general: { totalSign: -1, liquidSign: -1, debtSign:  0, label: "일반 지출" }
 };
 
-// 카테고리 nwImpact별 매핑 (6종)
+// 카테고리 nwImpact별 매핑 (8종)
 export const CAT_IMPACT_META = {
-  liquid_asset: { sign: +1, liquid: true,  label: "유동 자산↑" },
-  locked_asset: { sign: +1, liquid: false, label: "묶인 자산↑" },
-  debt_down:    { sign: +1, liquid: false, label: "부채 감소" },
-  income:       { sign: +1, liquid: true,  label: "수입" },
-  expense:      { sign: -1, liquid: true,  label: "지출/소비" },
-  neutral:      { sign:  0, liquid: false, label: "중립" }
+  income:        { totalSign: +1, liquidSign: +1, debtSign:  0, label: "수입" },
+  liquid_asset:  { totalSign: +1, liquidSign: +1, debtSign:  0, label: "유동 자산↑" },
+  expense:       { totalSign: -1, liquidSign: -1, debtSign:  0, label: "지출/소비" },
+  locked_asset:  { totalSign:  0, liquidSign: -1, debtSign:  0, label: "묶인 자산↑" },
+  debt_down:     { totalSign:  0, liquidSign: -1, debtSign: -1, label: "부채 상환" },
+  debt_up_cash:  { totalSign:  0, liquidSign: +1, debtSign: +1, label: "대출↑ (현금으로)" },
+  debt_up_asset: { totalSign:  0, liquidSign:  0, debtSign: +1, label: "대출↑ (자산으로)" },
+  neutral:       { totalSign:  0, liquidSign:  0, debtSign:  0, label: "중립" }
 };
 
 export const CAT_IMPACT_KEYS = Object.keys(CAT_IMPACT_META);
 
-// 카테고리 객체에서 nwImpact 추출 (없으면 expense fallback)
 export function getNwImpact(category) {
   if (!category) return "expense";
   if (typeof category === "string") return "expense";
   return category.nwImpact || "expense";
 }
 
-// 모든 expenses 합산 + 모든 monthly_status actualAmounts 합산
-// initialNW, initialLiquid는 사용자가 onboarding/수동 입력한 기준값
-// tasks: 현재 월 task (legacy). 더 정확한 계산을 위해 내부에서 모든 월 schedule을 모은다.
-export async function computeNetWorth({ initialNW, initialLiquid, categories, tasks }) {
+export function entryBucketDeltas(e) {
+  return {
+    total: e.totalDelta,
+    liquid: e.liquidDelta,
+    invested: e.totalDelta - e.liquidDelta + e.debtDelta,
+    debt: e.debtDelta
+  };
+}
+
+export async function computeNetWorth({ initialNW, initialLiquid, initialDebt, categories, tasks }) {
   const expensesAll = await db.expenses.toArray();
   const monthlyAll = await db.monthly_status.toArray();
   const schedulesAll = await db.month_schedule.toArray();
@@ -52,13 +59,11 @@ export async function computeNetWorth({ initialNW, initialLiquid, categories, ta
   const scheduleByMonth = {};
   for (const s of schedulesAll) scheduleByMonth[s.id] = s;
 
-  // 모든 월의 task 정의를 ID로 인덱싱.
-  // GH는 프로필 기반으로 매월 income/debt task를 런타임 생성하므로,
-  // monthly_status 가 있는 모든 월에 대해 getTasksForMonth 로 task 를 복원해 인덱싱한다.
+  // GH는 프로필 기반으로 매월 income/debt task를 런타임 생성하므로, 모든 월에 대해 복원해 인덱싱.
   const taskById = {};
   for (const t of tasks || []) taskById[t.id] = t;
   for (const m of monthlyAll) {
-    const mk = m.id; // "YYYY-M"
+    const mk = m.id;
     const [yy, mm] = String(mk).split("-").map(Number);
     if (!yy || !mm) continue;
     const debtPaidBefore = calcDebtPaidBefore(monthlyAll, profile, yy, mm);
@@ -70,83 +75,102 @@ export async function computeNetWorth({ initialNW, initialLiquid, categories, ta
     });
     for (const t of monthTasks) taskById[t.id] = t;
   }
-  // month_schedule.added 도 보강 (혹시 누락분)
   for (const s of schedulesAll) {
     for (const t of (s?.added || [])) taskById[t.id] = t;
   }
 
-  // 카테고리 key → nwImpact 매핑 테이블 (시스템 + 커스텀)
   const catImpactByKey = {};
+  const catLabelByKey = {};
   for (const c of categories || []) {
     catImpactByKey[c.key] = c.nwImpact || "expense";
+    catLabelByKey[c.key] = c.label;
   }
 
-  // breakdown: 카테고리 영향별 누적
+  const entries = [];
+  let totalDelta = 0, liquidDelta = 0, debtDelta = 0;
   const breakdown = {};
   for (const k of CAT_IMPACT_KEYS) breakdown[k] = 0;
-  let taskTotal = 0;
-  let taskLiquidDelta = 0;
 
-  // 1) expenses 합산
-  let expenseTotal = 0;
-  let expenseLiquidDelta = 0;
+  const push = (e) => {
+    totalDelta += e.totalDelta;
+    liquidDelta += e.liquidDelta;
+    debtDelta += e.debtDelta;
+    if (breakdown[e.impactKey] !== undefined) breakdown[e.impactKey] += e.amount;
+    entries.push(e);
+  };
+
+  // 1) 변동지출 (expenses)
   for (const e of expensesAll) {
     const impactKey = catImpactByKey[e.category] || "expense";
     const meta = CAT_IMPACT_META[impactKey];
     if (!meta) continue;
-    const amount = Number(e.amount) || 0;
-    breakdown[impactKey] += amount;
-    expenseTotal += amount * meta.sign;
-    if (meta.liquid) expenseLiquidDelta += amount * meta.sign;
+    const amount = Math.abs(Number(e.amount) || 0);
+    push({
+      date: String(e.date || "").slice(0, 10),
+      category: e.category,
+      categoryLabel: catLabelByKey[e.category] || e.category || "(없음)",
+      label: e.memo || e.subcategory || "지출",
+      amount,
+      impactKey,
+      impactLabel: meta.label,
+      totalDelta: amount * meta.totalSign,
+      liquidDelta: amount * meta.liquidSign,
+      debtDelta: amount * meta.debtSign,
+      source: "expense"
+    });
   }
 
-  // 2) 캘린더 task 합산 (모든 월 누적) — 카테고리 자산 종류가 있으면 그게 우선
-  // - actualAmount 입력되어 있으면 그 값
-  // - 없는데 체크되어 있으면 task.amount(계획값) 으로 fallback
+  // 2) 캘린더 task (actualAmount 우선, 없고 체크되면 계획값 fallback)
   for (const m of monthlyAll) {
+    const [y, mo] = String(m.id).split("-").map(Number);
+    const mm = mo ? String(mo).padStart(2, "0") : "01";
     const actuals = m.actualAmounts || {};
     const checks = m.checks || {};
-    const seenIds = new Set();
-    for (const taskId in actuals) {
-      seenIds.add(taskId);
+    const seen = new Set();
+
+    const handle = (taskId, rawAmount) => {
       const task = taskById[taskId];
-      if (!task) continue;
-      let meta;
-      const catImpactKey = task.category ? catImpactByKey[task.category] : null;
-      meta = catImpactKey ? CAT_IMPACT_META[catImpactKey] : TASK_TYPE_META[task.type];
-      if (!meta) continue;
-      const amount = Math.abs(Number(actuals[taskId]) || 0);
-      taskTotal += amount * meta.sign;
-      if (meta.liquid) taskLiquidDelta += amount * meta.sign;
-    }
-    // 체크되어 있는데 actualAmount 미입력인 task는 계획값으로 fallback
+      if (!task) return;
+      const catKey = task.category ? catImpactByKey[task.category] : null;
+      const meta = catKey ? CAT_IMPACT_META[catKey] : TASK_TYPE_META[task.type];
+      if (!meta) return;
+      const amount = Math.abs(Number(rawAmount) || 0);
+      const dd = task.day ? String(task.day).padStart(2, "0") : "01";
+      push({
+        date: (y && mo) ? `${y}-${mm}-${dd}` : String(m.id),
+        category: task.category,
+        categoryLabel: catLabelByKey[task.category] || task.category || "(없음)",
+        label: task.label || "항목",
+        amount,
+        impactKey: catKey || `task:${task.type}`,
+        impactLabel: meta.label || "기타",
+        totalDelta: amount * meta.totalSign,
+        liquidDelta: amount * meta.liquidSign,
+        debtDelta: amount * meta.debtSign,
+        source: "task"
+      });
+    };
+
+    for (const taskId in actuals) { seen.add(taskId); handle(taskId, actuals[taskId]); }
     for (const taskId in checks) {
-      if (!checks[taskId] || seenIds.has(taskId)) continue;
-      const task = taskById[taskId];
-      if (!task) continue;
-      let meta;
-      const catImpactKey = task.category ? catImpactByKey[task.category] : null;
-      meta = catImpactKey ? CAT_IMPACT_META[catImpactKey] : TASK_TYPE_META[task.type];
-      if (!meta) continue;
-      const amount = Math.abs(Number(task.amount) || 0);
-      taskTotal += amount * meta.sign;
-      if (meta.liquid) taskLiquidDelta += amount * meta.sign;
+      if (!checks[taskId] || seen.has(taskId)) continue;
+      const t = taskById[taskId];
+      if (t) handle(taskId, t.amount);
     }
   }
-
-  const totalDelta = expenseTotal + taskTotal;
-  const liquidDelta = expenseLiquidDelta + taskLiquidDelta;
 
   const total = (initialNW || 0) + totalDelta;
   const liquid = (initialLiquid || 0) + liquidDelta;
-  const locked = total - liquid;
+  const debt = (initialDebt || 0) + debtDelta;
+  const invested = total - liquid + debt;
 
   return {
-    total,
-    liquid,
-    locked,
+    total, liquid, invested, debt,
+    totalDelta, liquidDelta, debtDelta,
+    initialNW: initialNW || 0,
+    initialLiquid: initialLiquid || 0,
+    initialDebt: initialDebt || 0,
     breakdown,
-    totalDelta,
-    liquidDelta
+    entries
   };
 }

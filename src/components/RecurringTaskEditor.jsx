@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { setRecurringTasks } from "../db.js";
 import MoneyInput from "./MoneyInput.jsx";
-import AssetTypeGuideModal, { AssetTypeHelpButton } from "./AssetTypeGuide.jsx";
+import AssetTypeGuideModal, { AssetTypeHelpButton, IMPACT_BY_KEY } from "./AssetTypeGuide.jsx";
 
 const R = {
   rose400: "#C08080", rose500: "#A66060",
@@ -82,10 +82,9 @@ export default function RecurringTaskEditor({ initial, allItems, allCategories, 
             const cat = (allCategories || []).find((c) => c.key === category);
             const catImpact = cat?.nwImpact;
             const lockedByCat = !!catImpact;
-            const IMPACT_LABEL = {
-              income: "💰 수입", liquid_asset: "💧 유동 자산↑", locked_asset: "🔒 묶인 자산↑",
-              debt_down: "⚡ 부채 감소", expense: "🔴 지출/소비", neutral: "⚪ 중립"
-            };
+            const IMPACT_LABEL = Object.fromEntries(
+              Object.entries(IMPACT_BY_KEY).map(([k, g]) => [k, g.label])
+            );
             return (
               <Field label={
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>

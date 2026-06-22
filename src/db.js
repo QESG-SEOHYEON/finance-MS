@@ -521,6 +521,14 @@ export async function getInitialLiquid() {
 export async function setInitialLiquid(value) {
   await db.settings.put({ id: "initialLiquid", value: Number(value) });
 }
+// 초기 부채 baseline (순자산 = 현금 + 투자 − 부채). null이면 미설정(프로필 debtItems 합으로 기본값).
+export async function getInitialDebt() {
+  const row = await db.settings.get("initialDebt");
+  return row?.value == null ? null : Number(row.value);
+}
+export async function setInitialDebt(value) {
+  await db.settings.put({ id: "initialDebt", value: Number(value) });
+}
 
 // ---------- 자산 마법사 1회성 완료 플래그 ----------
 export async function isAssetSetupDone() {

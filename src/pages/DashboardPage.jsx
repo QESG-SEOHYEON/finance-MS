@@ -890,6 +890,10 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          <div style={{ fontSize: 9, color: R.textMid, marginBottom: 6, lineHeight: 1.5 }}>
+            통장 실제 잔고를 적어두면 <b>자동 계산된 현금</b>과 비교해 누락된 거래를 찾아줘요.
+          </div>
+
           {/* 값 / 입력 */}
           {editCash ? (
             <div style={{ display: "flex", gap: 4 }}>

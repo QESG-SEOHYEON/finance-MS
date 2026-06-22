@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { fmt, fmtWon } from "../schedule.js";
 import MoneyInput from "./MoneyInput.jsx";
-import AssetTypeGuideModal, { AssetTypeHelpButton } from "./AssetTypeGuide.jsx";
+import AssetTypeGuideModal, { AssetTypeHelpButton, IMPACT_BY_KEY } from "./AssetTypeGuide.jsx";
 
 const TYPES = [
   { key: "income", label: "수입" },
@@ -12,24 +12,13 @@ const TYPES = [
   { key: "variable", label: "기타 변동" }
 ];
 
-// 카테고리 nwImpact → calendar task type (캘린더 색상/그룹용)
-const IMPACT_TO_TASK_TYPE = {
-  income: "income",
-  liquid_asset: "income",
-  locked_asset: "invest",
-  debt_down: "debt",
-  expense: "general",
-  neutral: "general"
-};
-
-const IMPACT_LABEL = {
-  income: "💰 수입",
-  liquid_asset: "💧 유동 자산↑",
-  locked_asset: "🔒 묶인 자산↑",
-  debt_down: "⚡ 부채 감소",
-  expense: "🔴 지출/소비",
-  neutral: "⚪ 중립"
-};
+// 카테고리 nwImpact → calendar task type (캘린더 색상/그룹용) — AssetTypeGuide 단일 소스 기반
+const IMPACT_TO_TASK_TYPE = Object.fromEntries(
+  Object.entries(IMPACT_BY_KEY).map(([k, g]) => [k, g.taskType || "general"])
+);
+const IMPACT_LABEL = Object.fromEntries(
+  Object.entries(IMPACT_BY_KEY).map(([k, g]) => [k, g.label])
+);
 
 const ICON_PRESETS = [
   "💰", "💳", "💵", "💸", "🏦", "📈", "📊", "📉", "⚡", "🔑", "💼",

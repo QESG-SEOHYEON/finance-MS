@@ -20,7 +20,7 @@ import { formatKorean } from "../lib/format.js";
 import { fmt, fmtWon } from "../schedule.js";
 import TopBar from "../components/TopBar.jsx";
 import RecurringTaskEditor from "../components/RecurringTaskEditor.jsx";
-import AssetTypeGuideModal, { AssetTypeHelpButton } from "../components/AssetTypeGuide.jsx";
+import AssetTypeGuideModal, { AssetTypeHelpButton, ASSET_TYPE_GUIDE, IMPACT_BY_KEY } from "../components/AssetTypeGuide.jsx";
 import MoneyInput from "../components/MoneyInput.jsx";
 
 const R = {
@@ -475,11 +475,8 @@ export default function ExpensesPage() {
             const amt = sums[c.key] || 0;
             const over = c.cap && amt > c.cap * 0.8;
             const isDefault = DEFAULT_CATEGORY_KEYS.has(c.key);
-            const IMPACT_EMOJI = {
-              liquid_asset: "💧", locked_asset: "🔒", debt_down: "⚡",
-              income: "💰", neutral: "⚪", expense: ""
-            };
-            const impactEmoji = IMPACT_EMOJI[c.nwImpact || "expense"] || "";
+            const impactMeta = IMPACT_BY_KEY[c.nwImpact || "expense"];
+            const impactEmoji = (c.nwImpact && c.nwImpact !== "expense") ? (impactMeta?.icon || "") : "";
             return (
               <div key={c.key} style={{ display: "inline-flex", alignItems: "stretch" }}>
                 <button
@@ -506,11 +503,7 @@ export default function ExpensesPage() {
                   {impactEmoji && (
                     <span
                       style={{ fontSize: 10, opacity: 0.7 }}
-                      title={`자산 종류: ${({
-                        liquid_asset: "💧 유동 자산↑", locked_asset: "🔒 묶인 자산↑",
-                        debt_down: "⚡ 부채 감소", income: "💰 수입",
-                        neutral: "⚪ 중립", expense: "🔴 지출"
-                      })[c.nwImpact || "expense"]}`}
+                      title={`자산 종류: ${impactMeta?.label || "🔴 지출"}`}
                     >{impactEmoji}</span>
                   )}
                   {amt > 0 && (
@@ -1392,7 +1385,7 @@ function CategoryEditor({ mode, category, isDefault, onSave, onClose }) {
 
         {(() => {
           const isExpenseLike = nwImpact === "expense" || nwImpact === "neutral";
-          const isGoalLike = nwImpact === "income" || nwImpact === "liquid_asset" || nwImpact === "locked_asset" || nwImpact === "debt_down";
+          const isGoalLike = !!IMPACT_BY_KEY[nwImpact]?.goalLike;
           if (nwImpact === "neutral") return null;  // 중립엔 의미 없음
           return (
             <>
@@ -1416,14 +1409,7 @@ function CategoryEditor({ mode, category, isDefault, onSave, onClose }) {
           <AssetTypeHelpButton onClick={() => setShowGuide(true)} />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 12 }}>
-          {[
-            { v: "expense",      label: "🔴 지출/소비",  hint: "식비·여가 (기본)" },
-            { v: "liquid_asset", label: "💧 유동 자산↑", hint: "예적금·비상금" },
-            { v: "locked_asset", label: "🔒 묶인 자산↑", hint: "투자·전세금" },
-            { v: "debt_down",    label: "📉 부채 감소",  hint: "대출·마통 상환" },
-            { v: "income",       label: "💰 수입",       hint: "월급·부수입" },
-            { v: "neutral",      label: "⚪ 중립",       hint: "계좌 간 이체" }
-          ].map((opt) => (
+          {ASSET_TYPE_GUIDE.map((g) => ({ v: g.v, label: g.label, hint: g.short })).map((opt) => (
             <button
               key={opt.v}
               type="button"
