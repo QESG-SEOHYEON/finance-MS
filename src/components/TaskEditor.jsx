@@ -12,13 +12,18 @@ const TYPES = [
   { key: "variable", label: "기타 변동" }
 ];
 
-// 카테고리 nwImpact → calendar task type (캘린더 색상/그룹용) — AssetTypeGuide 단일 소스 기반
-const IMPACT_TO_TASK_TYPE = Object.fromEntries(
-  Object.entries(IMPACT_BY_KEY).map(([k, g]) => [k, g.taskType || "general"])
-);
 const IMPACT_LABEL = Object.fromEntries(
   Object.entries(IMPACT_BY_KEY).map(([k, g]) => [k, g.label])
 );
+// 분류(task type) → 카테고리 미지정 시 순자산 nwImpact 매핑
+const TYPE_TO_IMPACT = {
+  income: "income",
+  fixed: "expense",
+  invest: "locked_asset",
+  debt: "debt_down",
+  general: "expense",
+  variable: "expense"
+};
 
 const ICON_PRESETS = [
   "💰", "💳", "💵", "💸", "🏦", "📈", "📊", "📉", "⚡", "🔑", "💼",
@@ -61,8 +66,9 @@ export default function TaskEditor({ task, actual, checked = false, mode = "edit
 
   const selectedCat = allCategories.find((c) => c.key === categoryKey);
   const catImpact = selectedCat?.nwImpact;
-  // 카테고리 선택 시 task type 자동 매핑
-  const effectiveType = catImpact ? (IMPACT_TO_TASK_TYPE[catImpact] || type) : type;
+  // 순자산 반영 nwImpact: 카테고리 우선, 없으면 분류(type) 기준
+  const effImpact = catImpact || TYPE_TO_IMPACT[type] || "expense";
+  const cashIn = ["income", "liquid_asset", "debt_up_cash"].includes(effImpact);
 
   const planned = task ? Math.abs(task.amount) : 0;
   const diff = amount !== "" && !isAmountOnly ? 0 : Number(amount) - planned;
@@ -70,16 +76,16 @@ export default function TaskEditor({ task, actual, checked = false, mode = "edit
   const handleSave = () => {
     const amt = amount === "" ? 0 : Number(amount);
     const signedAbs = Math.abs(amt);
-    // 수입은 양수, 그 외는 음수로 저장 (캘린더 task amount 컨벤션)
-    const signed = effectiveType === "income" ? signedAbs : -signedAbs;
+    // 현금이 들어오는 종류는 양수, 나가는 종류는 음수 (캘린더 표시 컨벤션)
+    const signed = cashIn ? signedAbs : -signedAbs;
     if (isAmountOnly) {
       onSave({ actualAmount: amt === 0 ? null : amt });
     } else {
       onSave({
         label: label.trim() || "새 항목",
         day: Number(day),
-        type: effectiveType,
-        category: categoryKey || undefined,
+        type,                              // 분류(캘린더 색·월 집계) — 카테고리와 독립
+        category: categoryKey || undefined, // 순자산은 카테고리 자산종류 우선
         icon: selectedCat?.icon || icon,
         amount: signed,
         completed: isDone
@@ -190,36 +196,44 @@ export default function TaskEditor({ task, actual, checked = false, mode = "edit
                 value={categoryKey}
                 onChange={(e) => setCategoryKey(e.target.value)}
               >
-                <option value="">(선택 안 함 — 직접 자산 종류 지정)</option>
+                <option value="">(선택 안 함 — 분류 기준으로 계산)</option>
                 {allCategories.map((c) => (
                   <option key={c.key} value={c.key}>{c.icon} {c.label}</option>
                 ))}
               </select>
             </div>
 
-            {/* 자산 종류 — 카테고리에 있으면 자동, 없으면 직접 선택 */}
+            {/* 분류 — 캘린더 색상·월 집계용 (카테고리와 독립, 고정지출도 카테고리 가능) */}
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#7A6060", marginBottom: 4 }}>
+                분류 <span style={{ color: "#B8A9A3", fontWeight: 500 }}>· 캘린더 색·월 합산</span>
+              </div>
+              <select
+                className="modal-input"
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+              >
+                {TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+              </select>
+            </div>
+
+            {/* 자산 종류(순자산 반영) 안내 */}
             <div style={{ marginBottom: 10 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#7A6060", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
-                <span>자산 종류</span>
+                <span>자산 종류 <span style={{ color: "#B8A9A3", fontWeight: 500 }}>· 순자산 계산</span></span>
                 <AssetTypeHelpButton onClick={() => setShowGuide(true)} />
               </div>
-              {catImpact ? (
-                <div style={{
-                  padding: "8px 10px", background: "#FAF5F3",
-                  border: "1px solid #EDE5E2", borderRadius: 8,
-                  fontSize: 12, color: "#7A6060"
-                }}>
-                  이미 자산 종류가 정해진 카테고리예요 — <strong style={{ color: "#A66060" }}>{IMPACT_LABEL[catImpact] || catImpact}</strong>
-                </div>
-              ) : (
-                <select
-                  className="modal-input"
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                >
-                  {TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
-                </select>
-              )}
+              <div style={{
+                padding: "8px 10px", background: "#FAF5F3",
+                border: "1px solid #EDE5E2", borderRadius: 8,
+                fontSize: 12, color: "#7A6060"
+              }}>
+                {catImpact ? (
+                  <>카테고리 기준 — <strong style={{ color: "#A66060" }}>{IMPACT_LABEL[catImpact] || catImpact}</strong></>
+                ) : (
+                  <>분류 기준 — <strong style={{ color: "#A66060" }}>{IMPACT_LABEL[effImpact] || effImpact}</strong> <span style={{ color: "#B8A9A3" }}>(카테고리 고르면 그 기준으로 바뀜)</span></>
+                )}
+              </div>
             </div>
 
             {/* 날짜 */}
