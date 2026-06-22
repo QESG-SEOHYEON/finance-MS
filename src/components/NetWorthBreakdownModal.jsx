@@ -24,6 +24,8 @@ export default function NetWorthBreakdownModal({ allCategories, tasks, initialNW
   const [bucket, setBucket] = useState("total");
   const [view, setView] = useState("category"); // 'category' | 'date'
   const [showGuide, setShowGuide] = useState(false);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   useEffect(() => {
     computeNetWorth({ initialNW, initialLiquid, initialDebt, categories: allCategories, tasks })
@@ -35,8 +37,17 @@ export default function NetWorthBreakdownModal({ allCategories, tasks, initialNW
   const bMeta = BUCKETS.find((b) => b.key === bucket);
   // 버킷별 거래 delta
   const deltaOf = (e) => entryBucketDeltas(e)[bucket];
-  // 해당 버킷에 영향 있는 거래만
-  const relevant = res.entries.filter((e) => deltaOf(e) !== 0);
+  // 기간 필터 (둘 다 입력 시 활성)
+  const rangeActive = !!(dateFrom && dateTo);
+  const fromKey = dateFrom <= dateTo ? dateFrom : dateTo;
+  const toKey = dateFrom <= dateTo ? dateTo : dateFrom;
+  const inRange = (e) => {
+    if (!rangeActive) return true;
+    const d = String(e.date).slice(0, 10);
+    return d >= fromKey && d <= toKey;
+  };
+  // 해당 버킷에 영향 있는 거래만 (+ 기간 필터)
+  const relevant = res.entries.filter((e) => deltaOf(e) !== 0 && inRange(e));
 
   const baseValue = bucket === "total" ? res.initialNW
     : bucket === "liquid" ? res.initialLiquid
@@ -82,15 +93,41 @@ export default function NetWorthBreakdownModal({ allCategories, tasks, initialNW
           ))}
         </div>
 
+        {/* 기간 조회 */}
+        <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8 }}>
+          <span style={{ fontSize: 11, color: R.textMid, fontWeight: 700, whiteSpace: "nowrap" }}>📅 기간</span>
+          <input type="date" className="modal-input" value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)} style={{ flex: 1, fontSize: 11, padding: "4px 6px" }} />
+          <span style={{ fontSize: 11, color: R.textLight }}>~</span>
+          <input type="date" className="modal-input" value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)} style={{ flex: 1, fontSize: 11, padding: "4px 6px" }} />
+          {rangeActive && (
+            <button onClick={() => { setDateFrom(""); setDateTo(""); }}
+              style={{ border: "none", background: "transparent", color: R.rose500, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}
+              title="전체 기간">✕</button>
+          )}
+        </div>
+
         {/* 합계 박스 */}
         <div style={{
           padding: "10px 12px", borderRadius: 10, background: R.cream,
           border: `1px solid ${R.border}`, marginBottom: 10, fontSize: 12
         }}>
-          <Row label={bucket === "total" ? "초기 순자산" : bucket === "liquid" ? "초기 현금" : bucket === "debt" ? "초기 부채" : "초기 투자"} value={baseValue} />
-          <Row label="+ 거래 합산" value={bucketDeltaSum} colored />
-          <div style={{ borderTop: `1px solid ${R.border}`, margin: "6px 0" }} />
-          <Row label={`= 현재 ${bMeta.label.replace(/^[^\s]+\s/, "")}`} value={bucketFinal} bold />
+          {rangeActive ? (
+            <>
+              <div style={{ fontSize: 11, color: R.textMid, marginBottom: 4 }}>
+                {fromKey} ~ {toKey} · {relevant.length}건
+              </div>
+              <Row label={`${bMeta.label.replace(/^[^\s]+\s/, "")} 기간 합계`} value={bucketDeltaSum} colored bold />
+            </>
+          ) : (
+            <>
+              <Row label={bucket === "total" ? "초기 순자산" : bucket === "liquid" ? "초기 현금" : bucket === "debt" ? "초기 부채" : "초기 투자"} value={baseValue} />
+              <Row label="+ 거래 합산" value={bucketDeltaSum} colored />
+              <div style={{ borderTop: `1px solid ${R.border}`, margin: "6px 0" }} />
+              <Row label={`= 현재 ${bMeta.label.replace(/^[^\s]+\s/, "")}`} value={bucketFinal} bold />
+            </>
+          )}
         </div>
 
         {/* 뷰 토글 */}
@@ -102,7 +139,7 @@ export default function NetWorthBreakdownModal({ allCategories, tasks, initialNW
 
         {relevant.length === 0 && (
           <div style={{ fontSize: 12, color: R.textLight, padding: 16, textAlign: "center" }}>
-            이 버킷에 영향을 준 거래가 아직 없어요.
+            {rangeActive ? `${fromKey} ~ ${toKey} 기간엔 거래가 없어요.` : "이 버킷에 영향을 준 거래가 아직 없어요."}
           </div>
         )}
 
