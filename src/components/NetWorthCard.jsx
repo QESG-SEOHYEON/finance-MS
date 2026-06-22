@@ -180,7 +180,10 @@ export default function NetWorthCard({ profile, allCategories, tasks, monthsToGo
         {tab === "debt" && (
           <BucketBody color={R.warn} bg="#FCF3F3" value={debt}
             title="갚아야 할 빚"
-            desc={<>마통·대출·전세대출 잔액이에요.<br />상환하면 <b style={{ color: R.mint }}>−</b> (현금도 같이 빠져요), 새로 빌리면 <b style={{ color: R.warn }}>+</b>.</>}
+            desc={<>마통·대출 등의 잔액이에요. <b>빌린 돈의 목적</b>에 따라 어디로 편입되는지 달라져요 (어느 경우든 순자산 총액은 그대로):<br />
+              • <b>투자 목적 대출</b>(전세대출·빚투) → 투자↑ 부채↑<br />
+              • <b>사용 목적 대출</b>(생활비·현금) → 현금↑ 부채↑<br />
+              상환하면 <b style={{ color: R.mint }}>현금↓ 부채↓</b>.</>}
             formula="= 초기 부채 + 신규 대출 − 상환"
             baseline={{ label: "초기 부채", value: initialDebt,
               onEdit: () => { setDraft(String(initialDebt)); setEditBaseline("debt"); },
