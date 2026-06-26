@@ -490,9 +490,10 @@ export default function ExpensesPage() {
           {allCategories.map((c) => {
             const active = activeCat === c.key;
             const amt = sums[c.key] || 0;
-            const over = c.cap && amt > c.cap * 0.8;
-            const isDefault = DEFAULT_CATEGORY_KEYS.has(c.key);
             const impactMeta = IMPACT_BY_KEY[c.nwImpact || "expense"];
+            // 목표성(투자·적금·상환) 카테고리는 초과 경고 안 함
+            const over = c.cap && !impactMeta?.goalLike && amt > c.cap * 0.8;
+            const isDefault = DEFAULT_CATEGORY_KEYS.has(c.key);
             const impactEmoji = (c.nwImpact && c.nwImpact !== "expense") ? (impactMeta?.icon || "") : "";
             return (
               <div key={c.key} style={{ display: "inline-flex", alignItems: "stretch" }}>
@@ -558,20 +559,27 @@ export default function ExpensesPage() {
           )}
         </div>
 
-        {category.cap && (
-          <div style={{ marginTop: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: R.textLight, marginBottom: 4, fontWeight: 600 }}>
-              <span>{category.icon} {category.label} 이번 달</span>
-              <span>{fmt(sums[activeCat] || 0)} / {fmt(category.cap)} ({Math.round(((sums[activeCat] || 0) / category.cap) * 100)}%)</span>
+        {category.cap && (() => {
+          const catGoal = !!IMPACT_BY_KEY[category.nwImpact || "expense"]?.goalLike;
+          const amt = sums[activeCat] || 0;
+          const reached = amt >= category.cap;
+          return (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: R.textLight, marginBottom: 4, fontWeight: 600 }}>
+                <span>{category.icon} {category.label} 이번 달 {catGoal ? "(목표)" : "(상한)"}</span>
+                <span>{fmt(amt)} / {fmt(category.cap)} ({Math.round((amt / category.cap) * 100)}%)</span>
+              </div>
+              <div className="progress-track" style={{ height: 4 }}>
+                <div className="progress-fill" style={{
+                  width: `${Math.min(100, (amt / category.cap) * 100)}%`,
+                  background: catGoal
+                    ? (reached ? R.mint : category.color)        // 목표: 달성하면 민트
+                    : (amt > category.cap ? R.over : category.color) // 상한: 초과하면 빨강
+                }} />
+              </div>
             </div>
-            <div className="progress-track" style={{ height: 4 }}>
-              <div className="progress-fill" style={{
-                width: `${Math.min(100, ((sums[activeCat] || 0) / category.cap) * 100)}%`,
-                background: (sums[activeCat] || 0) > category.cap ? R.over : category.color
-              }} />
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* 2-column layout: left = inputs, right = log */}

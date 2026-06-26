@@ -29,6 +29,7 @@ import LightweightTrendChart from "../components/LightweightTrendChart.jsx";
 import LightweightCategoryChart from "../components/LightweightCategoryChart.jsx";
 import { getOrphanedTaskRefs } from "../db.js";
 import { computeNetWorth } from "../lib/netWorth.js";
+import { IMPACT_BY_KEY } from "../components/AssetTypeGuide.jsx";
 import { getInitialLiquid } from "../db.js";
 
 // Rose palette tokens
@@ -1512,8 +1513,11 @@ function DashboardCategorySummary({ year, month, allCategories, expenseSums, das
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {(manage ? allCategories : visible).map((c) => {
           const amt = expenseSums[c.key] || 0;
+          const catGoal = !!IMPACT_BY_KEY[c.nwImpact || "expense"]?.goalLike;
           const pct = c.cap ? Math.min(100, (amt / c.cap) * 100) : 0;
-          const over = c.cap && amt > c.cap;
+          const reached = c.cap && amt >= c.cap;
+          const over = c.cap && !catGoal && amt > c.cap;
+          const barColor = catGoal ? (reached ? R.mint : c.color) : (over ? R.overBudget : c.color);
           const isHidden = dashboardHidden.includes(c.key);
           return (
             <div
@@ -1551,17 +1555,17 @@ function DashboardCategorySummary({ year, month, allCategories, expenseSums, das
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: over ? R.overBudget : R.textDark }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: over ? R.overBudget : reached ? R.mint : R.textDark }}>
                     {fmt(amt)}
                   </div>
                 </div>
                 {c.cap && (
                   <>
                     <div className="progress-track" style={{ marginTop: 6, height: 3 }}>
-                      <div className="progress-fill" style={{ width: `${pct}%`, background: over ? R.overBudget : c.color }} />
+                      <div className="progress-fill" style={{ width: `${pct}%`, background: barColor }} />
                     </div>
                     <div style={{ fontSize: 10, color: R.textLight, marginTop: 3 }}>
-                      상한 {fmt(c.cap)}
+                      {catGoal ? "목표" : "상한"} {fmt(c.cap)}
                     </div>
                   </>
                 )}
