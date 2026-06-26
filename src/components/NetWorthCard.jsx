@@ -1,15 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   getNetWorth, setNetWorth,
   getInitialLiquid, setInitialLiquid,
-  getInitialDebt, setInitialDebt,
+  getUserProfile,
   db
 } from "../db.js";
 import { computeNetWorth } from "../lib/netWorth.js";
+import { computeDebtBalances } from "../lib/debt.js";
 import { fmt, fmtWon } from "../schedule.js";
 import MoneyInput from "./MoneyInput.jsx";
 import NetWorthBreakdownModal from "./NetWorthBreakdownModal.jsx";
+import DebtManagerModal from "./DebtManagerModal.jsx";
 import AssetTypeGuideModal, { AssetTypeHelpButton } from "./AssetTypeGuide.jsx";
 
 const R = {
@@ -20,28 +22,29 @@ const R = {
 };
 
 export default function NetWorthCard({ profile, allCategories, tasks, monthsToGoal }) {
-  const profileDebtTotal = (profile?.debtItems || []).reduce((s, d) => s + (Number(d.total) || 0), 0);
+  // 부채 데이터는 프로필 debtItems (라이브). 초기 부채 = Σ 총액 (자동).
+  const liveProfile = useLiveQuery(() => getUserProfile(), [], null);
+  const debtItems = liveProfile?.debtItems || profile?.debtItems || [];
+  const initialDebt = debtItems.reduce((s, d) => s + (Number(d.total) || 0), 0);
 
   // 베이스라인
   const [initialNW, setInitialNWState] = useState(profile.currentNetWorth || 0);
   const [initialLiquid, setIL] = useState(0);
-  const [initialDebt, setIDebt] = useState(0);
 
-  const [editBaseline, setEditBaseline] = useState(null); // null | 'nw' | 'liquid' | 'debt'
+  const [editBaseline, setEditBaseline] = useState(null); // null | 'nw' | 'liquid'
   const [draft, setDraft] = useState("");
 
   const [tab, setTab] = useState("total");   // 'total' | 'liquid' | 'invested' | 'debt'
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [showDebt, setShowDebt] = useState(false);
 
   useEffect(() => {
     (async () => {
       setInitialNWState(await getNetWorth() || profile.currentNetWorth || 0);
       setIL(await getInitialLiquid());
-      const d = await getInitialDebt();
-      setIDebt(d == null ? profileDebtTotal : d);  // 미설정이면 프로필 부채 합으로 기본값
     })();
-  }, [profile.currentNetWorth, profileDebtTotal]);
+  }, [profile.currentNetWorth]);
 
   const expensesAll = useLiveQuery(() => db.expenses.toArray(), [], []);
   const monthlyAll = useLiveQuery(() => db.monthly_status.toArray(), [], []);
@@ -55,6 +58,7 @@ export default function NetWorthCard({ profile, allCategories, tasks, monthsToGo
   }, [initialNW, initialLiquid, initialDebt, allCategories, tasks, expensesAll, monthlyAll]);
 
   const { total, liquid, invested, debt } = computed;
+  const debtBalances = useMemo(() => computeDebtBalances(debtItems, monthlyAll || []), [debtItems, monthlyAll]);
 
   const nwPct = Math.min(100, (total / Math.max(1, profile.goalAmount)) * 100);
   const remaining = Math.max(0, profile.goalAmount - total);
@@ -64,7 +68,6 @@ export default function NetWorthCard({ profile, allCategories, tasks, monthsToGo
     const n = Number(draft);
     if (editBaseline === "nw") { await setNetWorth(n); setInitialNWState(n); }
     else if (editBaseline === "liquid") { await setInitialLiquid(n); setIL(n); }
-    else if (editBaseline === "debt") { await setInitialDebt(n); setIDebt(n); }
     setEditBaseline(null);
   };
 
@@ -159,10 +162,16 @@ export default function NetWorthCard({ profile, allCategories, tasks, monthsToGo
               onEdit={() => { setDraft(String(initialLiquid)); setEditBaseline("liquid"); }}
               editing={editBaseline === "liquid"} draft={draft} setDraft={setDraft}
               onSave={saveBaseline} onCancel={() => setEditBaseline(null)} />
-            <BaselineRow label="초기 부채" value={initialDebt}
-              onEdit={() => { setDraft(String(initialDebt)); setEditBaseline("debt"); }}
-              editing={editBaseline === "debt"} draft={draft} setDraft={setDraft}
-              onSave={saveBaseline} onCancel={() => setEditBaseline(null)} />
+            <div style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "6px 8px", marginTop: 6, borderRadius: 8, background: R.cream, fontSize: 11
+            }}>
+              <span style={{ color: R.textMid, fontWeight: 600 }}>현재 부채</span>
+              <span style={{ flex: 1, color: R.textDark, fontWeight: 700 }}>{fmt(debt)}</span>
+              <button onClick={() => setShowDebt(true)}
+                style={{ background: "none", border: "none", color: R.rose500, fontSize: 11, fontWeight: 700, cursor: "pointer", padding: "2px 4px" }}
+                title="부채 관리">🛠 관리</button>
+            </div>
           </>
         )}
         {tab === "liquid" && (
@@ -178,19 +187,52 @@ export default function NetWorthCard({ profile, allCategories, tasks, monthsToGo
             formula="= 순자산 − 현금 + 부채" />
         )}
         {tab === "debt" && (
-          <BucketBody color={R.warn} bg="#FCF3F3" value={debt}
-            title="갚아야 할 빚"
-            desc={<>마통·대출 등의 잔액이에요. <b>빌린 돈의 목적</b>에 따라 어디로 편입되는지 달라져요 (어느 경우든 순자산 총액은 그대로):<br />
-              • <b>투자 목적 대출</b>(전세대출·빚투) → 투자↑ 부채↑<br />
-              • <b>사용 목적 대출</b>(생활비·현금) → 현금↑ 부채↑<br />
-              상환하면 <b style={{ color: R.mint }}>현금↓ 부채↓</b>.</>}
-            formula="= 초기 부채 + 신규 대출 − 상환"
-            baseline={{ label: "초기 부채", value: initialDebt,
-              onEdit: () => { setDraft(String(initialDebt)); setEditBaseline("debt"); },
-              editing: editBaseline === "debt", draft, setDraft, onSave: saveBaseline,
-              onCancel: () => setEditBaseline(null) }} />
+          <div style={{ padding: "8px 4px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 22, fontWeight: 800, color: R.warn }}>{fmtWon(debt)}</div>
+              <button
+                onClick={() => setShowDebt(true)}
+                style={{
+                  padding: "8px 14px", borderRadius: 10,
+                  background: `linear-gradient(135deg, ${R.rose400}, ${R.rose500})`,
+                  color: "#fff", border: "none", fontSize: 12, fontWeight: 800,
+                  cursor: "pointer", fontFamily: "inherit", boxShadow: `0 3px 10px ${R.rose400}40`
+                }}
+              >🛠 부채 관리</button>
+            </div>
+
+            {debtBalances.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+                {debtBalances.map((d) => {
+                  const pct = d.total > 0 ? Math.min(100, (d.paid / d.total) * 100) : 0;
+                  return (
+                    <div key={d.id} style={{ padding: "8px 10px", borderRadius: 8, background: "#FCF3F3", border: `1px solid ${R.border}` }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                        <span style={{ fontWeight: 700, color: R.textDark }}>{d.name || "(이름 없음)"}</span>
+                        <span style={{ fontWeight: 800, color: d.balance <= 0 ? R.mint : R.warn }}>{d.balance <= 0 ? "완납 ✓" : fmt(d.balance)}</span>
+                      </div>
+                      <div className="progress-track" style={{ marginTop: 5, height: 3 }}>
+                        <div className="progress-fill" style={{ width: `${pct}%`, background: d.balance <= 0 ? R.mint : R.rose400 }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{
+                fontSize: 11, color: R.textMid, lineHeight: 1.6, marginTop: 10,
+                padding: "8px 10px", borderRadius: 8, background: "#FCF3F3", border: `1px solid ${R.border}`
+              }}>
+                마통·대출이 있으면 <b>🛠 부채 관리</b>에서 등록하세요. 대출별 잔액·상환을 추적하고 순자산 부채에 반영돼요.
+              </div>
+            )}
+            <div style={{ fontSize: 10, color: R.textLight, marginTop: 8, lineHeight: 1.5 }}>
+              상환하면 <b style={{ color: R.mint }}>현금↓ 부채↓</b> · 대출 받으면 용도(생활비/전세/투자)대로 현금 또는 투자로 편입돼요.
+            </div>
+          </div>
         )}
       </div>
+      {showDebt && <DebtManagerModal onClose={() => setShowDebt(false)} />}
       {showBreakdown && (
         <NetWorthBreakdownModal
           allCategories={allCategories}

@@ -530,6 +530,16 @@ export async function setInitialDebt(value) {
   await db.settings.put({ id: "initialDebt", value: Number(value) });
 }
 
+// ---------- 부채 (profile.debtItems) ----------
+export async function getDebts() {
+  const p = await getUserProfile();
+  return Array.isArray(p?.debtItems) ? p.debtItems : [];
+}
+export async function setDebts(items) {
+  await setUserProfile({ debtItems: items, debtEnabled: items.length > 0 });
+  return items;
+}
+
 // ---------- 자산 마법사 1회성 완료 플래그 ----------
 export async function isAssetSetupDone() {
   const row = await db.settings.get("asset-setup-done");
