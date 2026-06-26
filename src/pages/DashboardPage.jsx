@@ -177,17 +177,17 @@ export default function DashboardPage() {
   const [showWhatsNew, setShowWhatsNew] = useState(false);
   useEffect(() => {
     (async () => {
-      if (import.meta.env.DEV && !sessionStorage.getItem("whats-new-v2-shown")) {
-        await clearWhatsNewSeen("v2");
-        sessionStorage.setItem("whats-new-v2-shown", "1");
+      if (import.meta.env.DEV && !sessionStorage.getItem("whats-new-v3-shown")) {
+        await clearWhatsNewSeen("v3");
+        sessionStorage.setItem("whats-new-v3-shown", "1");
       }
-      const seen = await isWhatsNewSeen("v2");
+      const seen = await isWhatsNewSeen("v3");
       if (!seen) setShowWhatsNew(true);
     })();
   }, []);
   const closeWhatsNew = async () => {
     setShowWhatsNew(false);
-    await markWhatsNewSeen("v2");
+    await markWhatsNewSeen("v3");
   };
   const expenses = useLiveQuery(() => getExpensesForMonth(year, month), [year, month], []);
   const scheduleRow = useLiveQuery(() => getMonthSchedule(year, month), [year, month], null);
