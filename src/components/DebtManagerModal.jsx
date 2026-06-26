@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { db, getDebts, setDebts, getMonthSchedule, setMonthSchedule, setActualAmount } from "../db.js";
+import { db, getDebts, setDebts } from "../db.js";
 import { computeDebtBalances, DEBT_PURPOSES, purposeMeta } from "../lib/debt.js";
 import { fmt, fmtWon } from "../schedule.js";
 import MoneyInput from "./MoneyInput.jsx";
@@ -55,32 +55,22 @@ export default function DebtManagerModal({ onClose }) {
     setBusy(false);
   };
 
-  // 이번 달 상환 기록 — 해당 debtId 태그 task 추가 + 실제 상환액 기록
-  const recordRepay = async (d) => {
-    const now = new Date();
-    const y = now.getFullYear(), mo = now.getMonth() + 1;
-    const day = Math.max(1, Math.min(31, Number(d.dueDay) || 26));
-    const taskId = `${y}-${mo}-${day}-debt-${d.id}`;
-    const sched = await getMonthSchedule(y, mo);
-    const added = Array.isArray(sched.added) ? [...sched.added] : [];
-    if (!added.find((t) => t.id === taskId)) {
-      added.push({ id: taskId, label: `${d.name} 상환`, type: "debt", icon: "⚡", day, amount: -(Number(d.monthly) || 0), _debtId: d.id });
-      await setMonthSchedule(y, mo, { added });
-    }
-    await setActualAmount(y, mo, taskId, Number(d.monthly) || 0);
-    await reload();
-  };
-
   return createPortal(
     <div className="modal-backdrop" onClick={onClose} style={{ zIndex: 1000 }}>
       <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520, maxHeight: "88vh", overflow: "auto" }}>
         <div className="modal-title">🛠 부채 관리</div>
-        <div className="modal-sub">대출별 잔액·상환을 관리해요. 순자산 = 현금 + 투자 − 부채.</div>
+        <div className="modal-sub">대출을 등록하면 매월 캘린더에 상환 일정이 떠요. 순자산 = 현금 + 투자 − 부채.</div>
 
         {/* 총 잔액 */}
-        <div style={{ padding: "10px 12px", borderRadius: 10, background: "#FCF3F3", border: `1px solid ${R.rose200}`, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ padding: "10px 12px", borderRadius: 10, background: "#FCF3F3", border: `1px solid ${R.rose200}`, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: 12, color: R.textMid, fontWeight: 700 }}>총 남은 부채</span>
           <span style={{ fontSize: 20, fontWeight: 800, color: R.warn }}>{fmtWon(totalRemaining)}</span>
+        </div>
+
+        {/* 상환 방법 안내 */}
+        <div style={{ padding: "8px 10px", borderRadius: 8, background: R.cream, border: `1px solid ${R.border}`, marginBottom: 12, fontSize: 11, color: R.textMid, lineHeight: 1.6 }}>
+          💡 <b>상환은 캘린더에서</b> — 매월 상환일에 <b>⚡ {"{"}대출{"}"} 상환</b> 일정이 자동으로 떠요.
+          그 일정을 <b>완료 체크</b>하면 상환 기록 (현금↓ 부채↓). 실제 금액이 다르면 일정을 눌러 금액만 고치면 돼요.
         </div>
 
         {/* 목록 */}
@@ -109,12 +99,7 @@ export default function DebtManagerModal({ onClose }) {
                   {d.balance <= 0 ? "✓ 완납" : `${Math.round(pct)}% 상환 (${fmt(d.paid)})`}
                 </div>
                 <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-                  {d.balance > 0 && (
-                    <button onClick={() => recordRepay(d)} disabled={busy}
-                      style={{ flex: 1, padding: "7px 10px", background: R.rose400, color: "#fff", border: "none", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
-                      title="이번 달 상환 기록 (현금↓ 부채↓)">⚡ 이번 달 상환</button>
-                  )}
-                  <button onClick={() => setEditing({ ...d })} style={{ padding: "7px 12px", background: "#fff", color: R.textMid, border: `1px solid ${R.border}`, borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>편집</button>
+                  <button onClick={() => setEditing({ ...d })} style={{ flex: 1, padding: "7px 12px", background: "#fff", color: R.textMid, border: `1px solid ${R.border}`, borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>편집</button>
                   <button onClick={() => remove(d.id)} style={{ padding: "7px 12px", background: "#fff", color: R.warn, border: `1px solid ${R.warn}30`, borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>삭제</button>
                 </div>
               </div>
