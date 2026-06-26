@@ -191,7 +191,7 @@ export default function OnboardingModal({ onComplete, onClose, initialProfile, i
     if (step === 0) return data.name.trim().length > 0 && data.age;
     if (step === 1) return data.currentNetWorth !== "" && data.goalAmount !== "" && data.goalDate;
     if (step === 2) return data.incomeSkipped || (data.incomeSources.length > 0 && data.incomeSources.every((s) => s.name.trim() && s.amount !== ""));
-    if (step === 3) return data.expenseBudgetCap !== "";
+    if (step === 3) return true;  // 지출 예산은 선택
     if (step === 4) return data.phaseMode === "none" ||
                           (data.phaseMode === "use" && data.customPhases.every((p) => p.name.trim()));
     if (step === 5) return !data.debtEnabled || data.debtItems.every((x) => x.name.trim() && x.total !== "" && x.monthly !== "");
@@ -508,18 +508,18 @@ export default function OnboardingModal({ onComplete, onClose, initialProfile, i
           </div>
         )}
 
-        {/* Step 3: 지출 예산 */}
+        {/* Step 3: 지출 예산 (선택) */}
         {step === 3 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <Field label="월 변동지출 상한 (원) *" T={T} hint="식비·여가·기타 지출의 월간 목표 한도">
+            <Field label="월 변동지출 예산 (원) · 선택" T={T} hint="대략적인 전체 한도 — 비워둬도 돼요">
               <NumberField
                 value={data.expenseBudgetCap}
                 onChange={(v) => set({ expenseBudgetCap: v })}
-                autoFocus
               />
             </Field>
-            <div style={{ fontSize: 11, color: T.textLight }}>
-              💡 카테고리별 세부 상한(식비 얼마, 여가 얼마)은 앱 안의 "카테고리 관리"에서 조정할 수 있습니다.
+            <div style={{ fontSize: 11, color: T.textLight, lineHeight: 1.6 }}>
+              💡 실제 예산은 <b>카테고리별 월 상한</b>(식비 얼마, 여가 얼마)으로 관리해요 — 앱 안의 "카테고리 관리"에서 정하면 그 합이 총 예산이 됩니다.<br />
+              여기 값은 카테고리 상한을 아직 안 정했을 때만 참고용으로 쓰여요.
             </div>
           </div>
         )}

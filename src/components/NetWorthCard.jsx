@@ -90,6 +90,17 @@ export default function NetWorthCard({ profile, allCategories, tasks, monthsToGo
               }}
               title="어떻게 계산됐는지 거래 내역 확인"
             >📊 산출 내역 자세히보기</button>
+            <button
+              onClick={() => setShowDebt(true)}
+              style={{
+                padding: "2px 8px", borderRadius: 6,
+                background: debt > 0 ? "#FCF3F3" : "transparent",
+                border: `1px solid ${debt > 0 ? R.rose300 : R.border}`,
+                color: debt > 0 ? R.rose500 : R.textMid, fontSize: 10,
+                fontWeight: 700, cursor: "pointer", fontFamily: "inherit"
+              }}
+              title="대출 추가·삭제·상환 관리"
+            >🛠 부채 관리</button>
             <AssetTypeHelpButton onClick={() => setShowGuide(true)} />
           </div>
         </div>
