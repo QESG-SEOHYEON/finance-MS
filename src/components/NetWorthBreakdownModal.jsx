@@ -22,7 +22,7 @@ const BUCKETS = [
   { key: "debt",     label: "💳 부채",      color: R.warn,     base: "debt" }
 ];
 
-export default function NetWorthBreakdownModal({ allCategories, tasks, initialNW, initialLiquid, initialDebt, onClose }) {
+export default function NetWorthBreakdownModal({ allCategories, tasks, initialNW, initialLiquid, debtItems, onClose }) {
   const [res, setRes] = useState(null);
   const [bucket, setBucket] = useState("total");
   const [view, setView] = useState("category"); // 'category' | 'date'
@@ -31,9 +31,9 @@ export default function NetWorthBreakdownModal({ allCategories, tasks, initialNW
   const [dateTo, setDateTo] = useState("");
 
   useEffect(() => {
-    computeNetWorth({ initialNW, initialLiquid, initialDebt, categories: allCategories, tasks })
+    computeNetWorth({ initialNW, initialLiquid, debtItems, categories: allCategories, tasks })
       .then(setRes);
-  }, [allCategories, tasks, initialNW, initialLiquid, initialDebt]);
+  }, [allCategories, tasks, initialNW, initialLiquid, debtItems]);
 
   if (!res) return null;
 

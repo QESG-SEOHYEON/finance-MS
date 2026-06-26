@@ -52,17 +52,14 @@ export default function NetWorthCard({ profile, allCategories, tasks, monthsToGo
 
   useEffect(() => {
     computeNetWorth({
-      initialNW, initialLiquid, initialDebt,
+      initialNW, initialLiquid, debtItems,
       categories: allCategories, tasks
     }).then(setComputed);
-  }, [initialNW, initialLiquid, initialDebt, allCategories, tasks, expensesAll, monthlyAll]);
+  }, [initialNW, initialLiquid, debtItems, allCategories, tasks, expensesAll, monthlyAll]);
 
-  // 부채는 debtItems 잔액(태그된 상환만) 단일 소스로 통일 — 산출내역과 불일치 방지.
+  // 부채 버킷·투자 모두 computeNetWorth 한 소스 (debtItems 잔액 기반).
+  const { total, liquid, invested, debt } = computed;
   const debtBalances = useMemo(() => computeDebtBalances(debtItems, monthlyAll || []), [debtItems, monthlyAll]);
-  const debt = debtBalances.reduce((s, d) => s + d.balance, 0);
-  const total = computed.total;
-  const liquid = computed.liquid;
-  const invested = total - liquid + debt;   // 투자 = 순자산 − 현금 + 부채
 
   const nwPct = Math.min(100, (total / Math.max(1, profile.goalAmount)) * 100);
   const remaining = Math.max(0, profile.goalAmount - total);
@@ -254,7 +251,7 @@ export default function NetWorthCard({ profile, allCategories, tasks, monthsToGo
           tasks={tasks}
           initialNW={initialNW}
           initialLiquid={initialLiquid}
-          initialDebt={initialDebt}
+          debtItems={debtItems}
           onClose={() => setShowBreakdown(false)}
         />
       )}

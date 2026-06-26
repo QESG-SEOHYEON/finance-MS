@@ -4,6 +4,7 @@
 
 import { db, calcDebtPaidBefore, getUserProfile } from "../db.js";
 import { getTasksForMonth } from "../schedule.js";
+import { computeDebtBalances } from "./debt.js";
 
 // 캘린더 task type별 매핑 (schedule.js의 5가지 type)
 export const TASK_TYPE_META = {
@@ -43,7 +44,7 @@ export function entryBucketDeltas(e) {
   };
 }
 
-export async function computeNetWorth({ initialNW, initialLiquid, initialDebt, categories, tasks }) {
+export async function computeNetWorth({ initialNW, initialLiquid, initialDebt, debtItems, categories, tasks }) {
   const expensesAll = await db.expenses.toArray();
   const monthlyAll = await db.monthly_status.toArray();
   const schedulesAll = await db.month_schedule.toArray();
@@ -163,7 +164,12 @@ export async function computeNetWorth({ initialNW, initialLiquid, initialDebt, c
 
   const total = (initialNW || 0) + totalDelta;
   const liquid = (initialLiquid || 0) + liquidDelta;
-  const debt = (initialDebt || 0) + debtDelta;
+
+  // 부채: debtItems 가 주어지면 대출별 잔액 합 단일 소스. 없으면 레거시 폴백.
+  const debtBalances = debtItems ? computeDebtBalances(debtItems, monthlyAll) : null;
+  const balanceSum = debtBalances ? debtBalances.reduce((s, d) => s + d.balance, 0) : null;
+  const totalsSum = debtBalances ? debtBalances.reduce((s, d) => s + d.total, 0) : 0;
+  const debt = balanceSum != null ? balanceSum : ((initialDebt || 0) + debtDelta);
   const invested = total - liquid + debt;
 
   return {
@@ -171,7 +177,8 @@ export async function computeNetWorth({ initialNW, initialLiquid, initialDebt, c
     totalDelta, liquidDelta, debtDelta,
     initialNW: initialNW || 0,
     initialLiquid: initialLiquid || 0,
-    initialDebt: initialDebt || 0,
+    initialDebt: debtItems ? totalsSum : (initialDebt || 0),
+    debtBalances,
     breakdown,
     entries
   };
