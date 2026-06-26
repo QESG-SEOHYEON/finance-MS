@@ -136,10 +136,12 @@ export async function computeNetWorth({ initialNW, initialLiquid, initialDebt, c
       if (!meta) return;
       const amount = Math.abs(Number(rawAmount) || 0);
       const dd = task.day ? String(task.day).padStart(2, "0") : "01";
+      // 카테고리 없는 task(월급·반복지출 등)는 라벨별로 묶고 "라벨 · 자산종류"로 표기
+      const noCat = !task.category;
       push({
         date: (y && mo) ? `${y}-${mm}-${dd}` : String(m.id),
-        category: task.category,
-        categoryLabel: catLabelByKey[task.category] || task.category || "(없음)",
+        category: task.category || `_lbl:${task.label || "항목"}`,
+        categoryLabel: noCat ? `${task.label || "항목"} · ${meta.label}` : (catLabelByKey[task.category] || task.category),
         label: task.label || "항목",
         amount,
         impactKey: catKey || `task:${task.type}`,

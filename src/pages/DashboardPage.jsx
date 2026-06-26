@@ -730,6 +730,16 @@ export default function DashboardPage() {
     return sums;
   }, [expenses, allCategories]);
 
+  // 총 변동지출 상한 = 지출 카테고리 월 상한 합. 없으면 프로필 예산으로 폴백.
+  const totalExpenseCap = useMemo(() => {
+    let sum = 0;
+    for (const c of allCategories) {
+      if ((c.nwImpact || "expense") !== "expense") continue;
+      if (c.cap) sum += Number(c.cap) || 0;
+    }
+    return sum > 0 ? sum : (Number(profile.expenseBudgetCap) || 0);
+  }, [allCategories, profile.expenseBudgetCap]);
+
   // 변동지출 StatCard sub 에 상위 3개 카테고리 표시 — 지출 카테고리만
   const topCategoriesText = useMemo(() => {
     const entries = allCategories
@@ -980,9 +990,9 @@ export default function DashboardPage() {
         <StatCard
           label="이번 달 변동지출"
           value={fmt(expenseSums.total)}
-          sub={topCategoriesText}
-          pct={(expenseSums.total / (profile.expenseBudgetCap || 890000)) * 100}
-          color={expenseSums.total > (profile.expenseBudgetCap || 890000) ? R.overBudget : R.warm}
+          sub={totalExpenseCap > 0 ? `${topCategoriesText} · 상한 ${fmt(totalExpenseCap)}` : topCategoriesText}
+          pct={totalExpenseCap > 0 ? (expenseSums.total / totalExpenseCap) * 100 : 0}
+          color={totalExpenseCap > 0 && expenseSums.total > totalExpenseCap ? R.overBudget : R.warm}
         />
         <StatCard
           label="이번 달 실행률"

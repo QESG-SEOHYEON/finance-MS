@@ -37,7 +37,6 @@ const R = {
   over: "#C06060"
 };
 
-const BUDGET_CAP = 890000;
 
 // 금액 입력 바로 아래 작은 한글 읽는 법 표시 (예: "≈ 1만2천원")
 function KrwHint({ value }) {
@@ -186,6 +185,16 @@ export default function ExpensesPage() {
     }
     return s;
   }, [expenses, allCategories, catByKey]);
+
+  // 총 상한 = 지출 카테고리들의 월 상한 합 (사용자가 설정한 만큼만). 0이면 막대 숨김.
+  const totalCap = useMemo(() => {
+    let sum = 0;
+    for (const c of allCategories) {
+      if ((c.nwImpact || "expense") !== "expense") continue;
+      if (c.cap) sum += Number(c.cap) || 0;
+    }
+    return sum;
+  }, [allCategories]);
 
   const prevSums = useMemo(() => {
     const s = { total: 0, food: 0, leisure: 0, other: 0 };
@@ -426,22 +435,30 @@ export default function ExpensesPage() {
             <div style={{ fontSize: 24, fontWeight: 800, marginTop: 2, color: R.textDark, letterSpacing: -0.5 }}>
               {fmtWon(sums.total)}
             </div>
-            <div className="progress-track" style={{ marginTop: 8 }}>
-              <div
-                className="progress-fill"
-                style={{
-                  width: `${Math.min(100, (sums.total / BUDGET_CAP) * 100)}%`,
-                  background: sums.total > BUDGET_CAP ? R.over : R.rose400
-                }}
-              />
-            </div>
+            {totalCap > 0 && (
+              <div className="progress-track" style={{ marginTop: 8 }}>
+                <div
+                  className="progress-fill"
+                  style={{
+                    width: `${Math.min(100, (sums.total / totalCap) * 100)}%`,
+                    background: sums.total > totalCap ? R.over : R.rose400
+                  }}
+                />
+              </div>
+            )}
           </div>
-          <div style={{ textAlign: "right", fontSize: 11, color: R.textMid, flexShrink: 0 }}>
-            <div style={{ color: R.textLight }}>상한 {fmt(BUDGET_CAP)}</div>
-            <div style={{ marginTop: 4, fontWeight: 700, fontSize: 13, color: sums.total > BUDGET_CAP ? R.over : R.mint }}>
-              {sums.total > BUDGET_CAP ? `${fmt(sums.total - BUDGET_CAP)} 초과` : `${fmt(BUDGET_CAP - sums.total)} 여유`}
+          {totalCap > 0 ? (
+            <div style={{ textAlign: "right", fontSize: 11, color: R.textMid, flexShrink: 0 }}>
+              <div style={{ color: R.textLight }}>카테고리 상한 합 {fmt(totalCap)}</div>
+              <div style={{ marginTop: 4, fontWeight: 700, fontSize: 13, color: sums.total > totalCap ? R.over : R.mint }}>
+                {sums.total > totalCap ? `${fmt(sums.total - totalCap)} 초과` : `${fmt(totalCap - sums.total)} 여유`}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div style={{ textAlign: "right", fontSize: 10, color: R.textLight, flexShrink: 0, maxWidth: 120, lineHeight: 1.5 }}>
+              카테고리별 월 상한을 정하면 여기에 합산 여유가 표시돼요
+            </div>
+          )}
         </div>
       </div>
 
