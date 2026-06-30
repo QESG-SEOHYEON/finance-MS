@@ -133,7 +133,8 @@ export async function computeNetWorth({ initialNW, initialLiquid, initialDebt, d
       const task = taskById[taskId];
       if (!task) return;
       const catKey = task.category ? catImpactByKey[task.category] : null;
-      const meta = catKey ? CAT_IMPACT_META[catKey] : TASK_TYPE_META[task.type];
+      const directKey = !catKey && task.nwImpact ? task.nwImpact : null;
+      const meta = catKey ? CAT_IMPACT_META[catKey] : directKey ? CAT_IMPACT_META[directKey] : TASK_TYPE_META[task.type];
       if (!meta) return;
       const amount = Math.abs(Number(rawAmount) || 0);
       const dd = task.day ? String(task.day).padStart(2, "0") : "01";
@@ -145,7 +146,7 @@ export async function computeNetWorth({ initialNW, initialLiquid, initialDebt, d
         categoryLabel: noCat ? `${task.label || "항목"} · ${meta.label}` : (catLabelByKey[task.category] || task.category),
         label: task.label || "항목",
         amount,
-        impactKey: catKey || `task:${task.type}`,
+        impactKey: catKey || directKey || `task:${task.type}`,
         impactLabel: meta.label || "기타",
         totalDelta: amount * meta.totalSign,
         liquidDelta: amount * meta.liquidSign,

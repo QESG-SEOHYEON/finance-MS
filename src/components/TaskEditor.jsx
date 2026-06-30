@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { fmt, fmtWon } from "../schedule.js";
 import MoneyInput from "./MoneyInput.jsx";
-import AssetTypeGuideModal, { AssetTypeHelpButton, IMPACT_BY_KEY } from "./AssetTypeGuide.jsx";
+import AssetTypeGuideModal, { AssetTypeHelpButton, IMPACT_BY_KEY, ASSET_TYPE_GUIDE } from "./AssetTypeGuide.jsx";
 
 const TYPES = [
   { key: "income", label: "수입" },
@@ -44,6 +44,8 @@ export default function TaskEditor({ task, actual, checked = false, mode = "edit
   const [day, setDay] = useState(task?.day || 1);
   const [type, setType] = useState(task?.type || "variable");
   const [categoryKey, setCategoryKey] = useState(task?.category || "");
+  // 직접 지정한 자산 종류(nwImpact). 빈 값이면 분류(type) 기준 자동.
+  const [manualImpact, setManualImpact] = useState(task?.nwImpact || "");
   const [icon, setIcon] = useState(task?.icon || "📌");
   const [isDone, setIsDone] = useState(checked);
   const [showIconPicker, setShowIconPicker] = useState(false);
@@ -58,6 +60,7 @@ export default function TaskEditor({ task, actual, checked = false, mode = "edit
       setDay(task.day || 1);
       setType(task.type || "variable");
       setCategoryKey(task.category || "");
+      setManualImpact(task.nwImpact || "");
       setIcon(task.icon || "📌");
       if (!isCreate) setAmount(actual ?? Math.abs(task.amount ?? 0));
     }
@@ -66,8 +69,8 @@ export default function TaskEditor({ task, actual, checked = false, mode = "edit
 
   const selectedCat = allCategories.find((c) => c.key === categoryKey);
   const catImpact = selectedCat?.nwImpact;
-  // 순자산 반영 nwImpact: 카테고리 우선, 없으면 분류(type) 기준
-  const effImpact = catImpact || TYPE_TO_IMPACT[type] || "expense";
+  // 순자산 반영 nwImpact: 카테고리 우선 > 직접 지정 > 분류(type) 기준
+  const effImpact = catImpact || manualImpact || TYPE_TO_IMPACT[type] || "expense";
   const cashIn = ["income", "liquid_asset", "debt_up_cash"].includes(effImpact);
 
   const planned = task ? Math.abs(task.amount) : 0;
@@ -86,6 +89,7 @@ export default function TaskEditor({ task, actual, checked = false, mode = "edit
         day: Number(day),
         type,                              // 분류(캘린더 색·월 집계) — 카테고리와 독립
         category: categoryKey || undefined, // 순자산은 카테고리 자산종류 우선
+        nwImpact: !categoryKey && manualImpact ? manualImpact : undefined, // 카테고리 없을 때 직접 지정
         icon: selectedCat?.icon || icon,
         amount: signed,
         completed: isDone
@@ -217,23 +221,37 @@ export default function TaskEditor({ task, actual, checked = false, mode = "edit
               </select>
             </div>
 
-            {/* 자산 종류(순자산 반영) 안내 */}
+            {/* 자산 종류(순자산 반영) — 카테고리 있으면 자동, 없으면 직접 선택 */}
             <div style={{ marginBottom: 10 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#7A6060", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
                 <span>자산 종류 <span style={{ color: "#B8A9A3", fontWeight: 500 }}>· 순자산 계산</span></span>
                 <AssetTypeHelpButton onClick={() => setShowGuide(true)} />
               </div>
-              <div style={{
-                padding: "8px 10px", background: "#FAF5F3",
-                border: "1px solid #EDE5E2", borderRadius: 8,
-                fontSize: 12, color: "#7A6060"
-              }}>
-                {catImpact ? (
-                  <>카테고리 기준 — <strong style={{ color: "#A66060" }}>{IMPACT_LABEL[catImpact] || catImpact}</strong></>
-                ) : (
-                  <>분류 기준 — <strong style={{ color: "#A66060" }}>{IMPACT_LABEL[effImpact] || effImpact}</strong> <span style={{ color: "#B8A9A3" }}>(카테고리 고르면 그 기준으로 바뀜)</span></>
-                )}
-              </div>
+              {catImpact ? (
+                <div style={{
+                  padding: "8px 10px", background: "#FAF5F3",
+                  border: "1px solid #EDE5E2", borderRadius: 8,
+                  fontSize: 12, color: "#7A6060"
+                }}>
+                  카테고리 기준 — <strong style={{ color: "#A66060" }}>{IMPACT_LABEL[catImpact] || catImpact}</strong>
+                </div>
+              ) : (
+                <>
+                  <select
+                    className="modal-input"
+                    value={manualImpact || ""}
+                    onChange={(e) => setManualImpact(e.target.value)}
+                  >
+                    <option value="">분류 기준 자동 ({IMPACT_LABEL[TYPE_TO_IMPACT[type]] || "지출"})</option>
+                    {ASSET_TYPE_GUIDE.map((g) => (
+                      <option key={g.v} value={g.v}>{g.label} · {g.short}</option>
+                    ))}
+                  </select>
+                  <div style={{ fontSize: 10, color: "#B8A9A3", marginTop: 3 }}>
+                    계좌 이체는 <strong>⚪ 중립</strong>을 고르세요 (순자산 변화 없음).
+                  </div>
+                </>
+              )}
             </div>
 
             {/* 날짜 */}
