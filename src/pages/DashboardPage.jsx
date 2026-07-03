@@ -55,8 +55,22 @@ const R = {
 
 export default function DashboardPage() {
   const today = useMemo(() => new Date(), []);
-  const year = today.getFullYear();
-  const month = today.getMonth() + 1;
+  const curY = today.getFullYear();
+  const curM = today.getMonth() + 1;
+  // 대시보드 조회 월 — ‹ › 로 과거 이동. year/month 별칭이라 모든 월별 조회가 자동 추종.
+  const [viewY, setViewY] = useState(curY);
+  const [viewM, setViewM] = useState(curM);
+  const year = viewY;
+  const month = viewM;
+  const isCurrentMonth = viewY === curY && viewM === curM;
+  const monthLabel = isCurrentMonth ? "이번 달" : `${month}월`;
+  const shiftViewMonth = (dir) => {
+    let nm = viewM + dir, ny = viewY;
+    if (nm > 12) { nm = 1; ny++; }
+    if (nm < 1) { nm = 12; ny--; }
+    setViewM(nm); setViewY(ny);
+  };
+  const goCurrentMonth = () => { setViewY(curY); setViewM(curM); };
 
   const dbProfile = useLiveQuery(() => getUserProfile(), [], null);
   const profile = mergeProfile(dbProfile);
@@ -65,25 +79,17 @@ export default function DashboardPage() {
   const [editNW, setEditNW] = useState(false);
   const [nwDraft, setNwDraft] = useState("");
 
-  // 여윳자금 (즉시 인출 가능 현금) — 월별 독립, 과거 월로 이동 가능
-  const [cashY, setCashY] = useState(year);
-  const [cashM, setCashM] = useState(month);
-  const cashSel = useLiveQuery(() => getCashBalance(cashY, cashM), [cashY, cashM], null);
+  // 여윳자금 (즉시 인출 가능 현금) — 대시보드 조회 월(year/month)에 연동.
+  const cashSel = useLiveQuery(() => getCashBalance(year, month), [year, month], null);
   const cashSelPrev = useLiveQuery(() => {
-    const pm = cashM === 1 ? 12 : cashM - 1;
-    const py = cashM === 1 ? cashY - 1 : cashY;
+    const pm = month === 1 ? 12 : month - 1;
+    const py = month === 1 ? year - 1 : year;
     return getCashBalance(py, pm);
-  }, [cashY, cashM], null);
+  }, [year, month], null);
   const [editCash, setEditCash] = useState(false);
   const [cashDraft, setCashDraft] = useState("");
-  const shiftCashMonth = (dir) => {
-    setEditCash(false);
-    let nm = cashM + dir, ny = cashY;
-    if (nm > 12) { nm = 1; ny++; }
-    if (nm < 1) { nm = 12; ny--; }
-    setCashM(nm); setCashY(ny);
-  };
-  const isCashCurrentMonth = cashY === year && cashM === month;
+  const isCashCurrentMonth = isCurrentMonth;
+  useEffect(() => { setEditCash(false); }, [year, month]);
 
   // Chart range
   const [chartFrom, setChartFrom] = useState(`${year}-01`);
@@ -177,17 +183,17 @@ export default function DashboardPage() {
   const [showWhatsNew, setShowWhatsNew] = useState(false);
   useEffect(() => {
     (async () => {
-      if (import.meta.env.DEV && !sessionStorage.getItem("whats-new-v3-shown")) {
-        await clearWhatsNewSeen("v3");
-        sessionStorage.setItem("whats-new-v3-shown", "1");
+      if (import.meta.env.DEV && !sessionStorage.getItem("whats-new-v4-shown")) {
+        await clearWhatsNewSeen("v4");
+        sessionStorage.setItem("whats-new-v4-shown", "1");
       }
-      const seen = await isWhatsNewSeen("v3");
+      const seen = await isWhatsNewSeen("v4");
       if (!seen) setShowWhatsNew(true);
     })();
   }, []);
   const closeWhatsNew = async () => {
     setShowWhatsNew(false);
-    await markWhatsNewSeen("v3");
+    await markWhatsNewSeen("v4");
   };
   const expenses = useLiveQuery(() => getExpensesForMonth(year, month), [year, month], []);
   const scheduleRow = useLiveQuery(() => getMonthSchedule(year, month), [year, month], null);
@@ -786,8 +792,60 @@ export default function DashboardPage() {
         }
       />
 
-      {/* Risk banner */}
-      {risks.length > 0 && (
+      {/* 대시보드 월 네비 — ‹ › 로 과거 달 조회 */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+        marginBottom: 12, padding: "8px 12px",
+        background: isCurrentMonth ? R.cream : "linear-gradient(135deg, #FBF3F8 0%, #F5EEF8 100%)",
+        border: `1px solid ${isCurrentMonth ? R.border : R.lavender}`,
+        borderRadius: 12
+      }}>
+        <button
+          onClick={() => shiftViewMonth(-1)}
+          style={{
+            width: 28, height: 28, border: "none", background: "rgba(255,255,255,0.8)",
+            borderRadius: 8, cursor: "pointer", fontSize: 15, color: R.textMid,
+            display: "flex", alignItems: "center", justifyContent: "center"
+          }}
+          title="이전 달"
+        >‹</button>
+        <div style={{ minWidth: 92, textAlign: "center" }}>
+          <span style={{
+            fontFamily: "'Galmuri11', monospace",
+            fontSize: 15, fontWeight: 700,
+            color: isCurrentMonth ? R.textDark : R.lavender,
+            letterSpacing: 0.5
+          }}>
+            {year}.{String(month).padStart(2, "0")}
+          </span>
+        </div>
+        <button
+          onClick={() => shiftViewMonth(1)}
+          disabled={isCurrentMonth}
+          style={{
+            width: 28, height: 28, border: "none",
+            background: isCurrentMonth ? "transparent" : "rgba(255,255,255,0.8)",
+            borderRadius: 8, cursor: isCurrentMonth ? "default" : "pointer",
+            fontSize: 15, color: isCurrentMonth ? R.textLight : R.textMid,
+            opacity: isCurrentMonth ? 0.3 : 1,
+            display: "flex", alignItems: "center", justifyContent: "center"
+          }}
+          title="다음 달"
+        >›</button>
+        {!isCurrentMonth && (
+          <button
+            onClick={goCurrentMonth}
+            style={{
+              marginLeft: 6, padding: "5px 12px", border: `1px solid ${R.lavender}`,
+              background: "#fff", borderRadius: 8, cursor: "pointer",
+              fontSize: 11, fontWeight: 700, color: R.lavender
+            }}
+          >이번 달로</button>
+        )}
+      </div>
+
+      {/* Risk banner — 현재 월에서만 (리스크·경고는 '지금' 기준) */}
+      {isCurrentMonth && risks.length > 0 && (
         <div className="risk-stack">
           {risks.map((r) => (
             <div
@@ -812,7 +870,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {orphanCount > 0 && (
+      {isCurrentMonth && orphanCount > 0 && (
         <button
           onClick={() => setShowOrphanModal(true)}
           style={{
@@ -829,10 +887,12 @@ export default function DashboardPage() {
         </button>
       )}
 
-      {/* 경제 멘토 위젯 (컴팩트) */}
-      <div style={{ marginBottom: 16 }}>
-        <MentorCard variant="compact" />
-      </div>
+      {/* 경제 멘토 위젯 (컴팩트) — 현재 월에서만 ('오늘의 경제') */}
+      {isCurrentMonth && (
+        <div style={{ marginBottom: 16 }}>
+          <MentorCard variant="compact" />
+        </div>
+      )}
 
       {/* Top overview row: Net worth (wider) + 3 stat cards stacked */}
       <div className="dashboard-overview" style={{ marginBottom: 16 }}>
@@ -849,8 +909,8 @@ export default function DashboardPage() {
           marginTop: 14, paddingTop: 12, borderTop: `1px solid ${R.border}`,
           display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8
         }}>
-          <QuickNavCard icon="📅" label="자산 캘린더" sub="이번 달 일정" color={R.rose400} target="calendar" />
-          <QuickNavCard icon="💸" label="지출 관리" sub={`이번 달 ${fmt(expenseSums.total)}`} color={R.warm} target="expenses" />
+          <QuickNavCard icon="📅" label="자산 캘린더" sub={`${monthLabel} 일정`} color={R.rose400} target="calendar" />
+          <QuickNavCard icon="💸" label="지출 관리" sub={`${monthLabel} ${fmt(expenseSums.total)}`} color={R.warm} target="expenses" />
           <QuickNavCard icon="📰" label="오늘의 경제" sub="뉴스 · 멘토" color={R.lavender} target="economy" />
         </div>
       </div>
@@ -866,38 +926,10 @@ export default function DashboardPage() {
             borderColor: "#D4A0A0"
           }}
         >
-          {/* 헤더: 타이틀 + 월 네비 */}
+          {/* 헤더: 타이틀 (월 이동은 대시보드 상단 네비로 통합) */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
             <div style={{ fontSize: 10, color: R.textLight, fontWeight: 700, letterSpacing: 0.5 }}>
-              💰 여윳자금 {!isCashCurrentMonth && <span style={{ color: R.rose500 }}>· 과거 기록</span>}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <button
-                onClick={() => shiftCashMonth(-1)}
-                style={{
-                  width: 20, height: 20, border: "none", background: "rgba(255,255,255,0.7)",
-                  borderRadius: 4, cursor: "pointer", fontSize: 11, color: R.textMid,
-                  display: "flex", alignItems: "center", justifyContent: "center"
-                }}
-                title="이전 달"
-              >‹</button>
-              <div style={{ fontSize: 11, fontWeight: 700, color: R.textDark, minWidth: 62, textAlign: "center" }}>
-                {cashY}.{String(cashM).padStart(2, "0")}
-              </div>
-              <button
-                onClick={() => shiftCashMonth(1)}
-                disabled={isCashCurrentMonth}
-                style={{
-                  width: 20, height: 20, border: "none",
-                  background: isCashCurrentMonth ? "transparent" : "rgba(255,255,255,0.7)",
-                  borderRadius: 4,
-                  cursor: isCashCurrentMonth ? "default" : "pointer",
-                  fontSize: 11, color: isCashCurrentMonth ? R.textLight : R.textMid,
-                  opacity: isCashCurrentMonth ? 0.3 : 1,
-                  display: "flex", alignItems: "center", justifyContent: "center"
-                }}
-                title="다음 달"
-              >›</button>
+              💰 여윳자금 {!isCashCurrentMonth && <span style={{ color: R.rose500 }}>· {month}월 기록</span>}
             </div>
           </div>
 
@@ -914,7 +946,7 @@ export default function DashboardPage() {
                 onChange={(e) => setCashDraft(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    setCashBalance(cashY, cashM, cashDraft === "" ? null : cashDraft);
+                    setCashBalance(year, month, cashDraft === "" ? null : cashDraft);
                     setEditCash(false);
                   }
                   if (e.key === "Escape") setEditCash(false);
@@ -925,7 +957,7 @@ export default function DashboardPage() {
               />
               <button
                 className="btn btn-primary btn-sm"
-                onClick={() => { setCashBalance(cashY, cashM, cashDraft === "" ? null : cashDraft); setEditCash(false); }}
+                onClick={() => { setCashBalance(year, month, cashDraft === "" ? null : cashDraft); setEditCash(false); }}
                 style={{ padding: "0 10px", height: 28 }}
               >✓</button>
             </div>
@@ -989,14 +1021,14 @@ export default function DashboardPage() {
           />
         )}
         <StatCard
-          label="이번 달 변동지출"
+          label={`${monthLabel} 변동지출`}
           value={fmt(expenseSums.total)}
           sub={totalExpenseCap > 0 ? `${topCategoriesText} · 상한 ${fmt(totalExpenseCap)}` : topCategoriesText}
           pct={totalExpenseCap > 0 ? (expenseSums.total / totalExpenseCap) * 100 : 0}
           color={totalExpenseCap > 0 && expenseSums.total > totalExpenseCap ? R.overBudget : R.warm}
         />
         <StatCard
-          label="이번 달 실행률"
+          label={`${monthLabel} 실행률`}
           value={`${tasks.length > 0 ? Math.round((tasks.filter(t => checks[t.id]).length / tasks.length) * 100) : 0}%`}
           sub={`${tasks.filter(t => checks[t.id]).length}/${tasks.length} 완료`}
           pct={tasks.length > 0 ? (tasks.filter(t => checks[t.id]).length / tasks.length) * 100 : 0}
@@ -1148,13 +1180,15 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* 출석 도장 */}
-      <AttendanceStrip
-        attendanceDates={attendanceDates}
-        today={today}
-        year={year}
-        month={month}
-      />
+      {/* 출석 도장 — 현재 월에서만 (오늘 기준 스트릭) */}
+      {isCurrentMonth && (
+        <AttendanceStrip
+          attendanceDates={attendanceDates}
+          today={today}
+          year={year}
+          month={month}
+        />
+      )}
 
       {/* Phase + 이번 달 체크포인트 + 카테고리 */}
       <div className="dashboard-bottom">
@@ -1224,10 +1258,10 @@ export default function DashboardPage() {
         </div>
 
         <div className="card">
-          <div className="section-title">이번 달 체크포인트</div>
+          <div className="section-title">{monthLabel} 체크포인트</div>
           {allCheckpoints.length === 0 && !showCPInput ? (
             <div style={{ fontSize: 13, color: R.textLight, padding: "12px 0" }}>
-              이번 달은 특별한 이벤트가 없습니다.
+              {monthLabel}은 특별한 이벤트가 없습니다.
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
