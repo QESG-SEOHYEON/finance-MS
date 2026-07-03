@@ -60,8 +60,8 @@ export default function TaskEditor({ task, actual, checked = false, mode = "edit
 
   const selectedCat = allCategories.find((c) => c.key === categoryKey);
   const catImpact = selectedCat?.nwImpact;
-  // 순자산 반영 nwImpact: 카테고리 우선 > 직접 지정(없으면 기존 type→impact 폴백)
-  const effImpact = catImpact || manualImpact || TYPE_TO_IMPACT[type] || "expense";
+  // 순자산 반영 nwImpact: 카테고리 우선 > 직접 지정(manualImpact는 항상 값 있음)
+  const effImpact = catImpact || manualImpact || "expense";
   const cashIn = ["income", "liquid_asset", "debt_up_cash"].includes(effImpact);
   // 자산종류 → 캘린더 분류(type): 색·필터·월합산용. IMPACT_BY_KEY.taskType 매핑.
   const derivedType = IMPACT_BY_KEY[effImpact]?.taskType || "general";
